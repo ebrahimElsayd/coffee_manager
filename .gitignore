@@ -1,0 +1,8 @@
+/node_modules
+/.next
+/.next-manager
+/out
+/.npm-cache
+*.log
+.env*
+!.env.example

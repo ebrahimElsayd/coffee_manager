@@ -1,0 +1,1050 @@
+@import "tailwindcss";
+
+:root {
+  --background: #090a08;
+  --surface: #171714;
+  --foreground: #f7f2e8;
+  --muted: #9d9b91;
+  --gold: #e0a020;
+  --success: #20c997;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --background: #f3efe7;
+  --surface: #fffdf8;
+  --foreground: #211b12;
+  --muted: #6e665a;
+  --gold: #9a6410;
+  --success: #16845e;
+}
+
+html[data-theme="light"] body { background: var(--background); color: var(--foreground); }
+
+* { box-sizing: border-box; }
+html { color-scheme: dark; width: 100%; min-height: 100%; overflow-x: hidden; }
+body {
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* The logo upload control needs room for its preview and remains full-width. */
+.settings-page label:has(input[type="file"]) { grid-column: auto; }
+.settings-page label:has(input[type="file"]) > div { width: min(100%, 360px); min-height: 180px; margin-left: 0; }
+.settings-page section > div.mt-5.border-t { display: none; }
+.fixed[role="dialog"][aria-label="Account settings"]:not(.account-settings-dialog) { display: none; }
+
+/* Keep browser scaling untouched; each layout adapts through its own grid rules. */
+
+@keyframes heroImageDrift {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.1) translate3d(-1.5%, -1%, 0); }
+}
+@keyframes heroReveal {
+  from { opacity: 0; transform: translateY(18px); filter: blur(8px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes heroSweep {
+  0%, 22% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  42% { opacity: .5; }
+  65%, 100% { transform: translateX(160%) skewX(-18deg); opacity: 0; }
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(16px, -20px, 0) scale(1.08); }
+}
+@keyframes heroPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224,160,32,.05); }
+  50% { box-shadow: 0 0 0 12px rgba(224,160,32,0); }
+}
+@keyframes heroProgress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.hero-stage { animation: heroReveal .9s cubic-bezier(.2,.8,.2,1) both; }
+.hero-image { animation: heroImageDrift 5.4s ease-out both; }
+.hero-brand { animation: heroReveal .8s .25s both; }
+.hero-crown { animation: heroPulse 2.4s 1s ease-in-out infinite; }
+.hero-eyebrow { animation: heroReveal .75s .45s both; }
+.hero-title { animation: heroReveal .9s .6s both; }
+.hero-description { animation: heroReveal .8s .82s both; }
+.hero-action { animation: heroReveal .8s 1.02s both; }
+.hero-meta { animation: heroReveal .8s 1.2s both; }
+.hero-light-sweep {
+  position: absolute; inset: -20% auto -20% -35%; z-index: -5; width: 28%;
+  background: linear-gradient(90deg, transparent, rgba(255,211,105,.16), transparent);
+  filter: blur(10px); animation: heroSweep 5.4s 1.1s ease-in-out infinite; pointer-events: none;
+}
+.hero-orb { position: absolute; z-index: -5; border-radius: 999px; pointer-events: none; filter: blur(1px); }
+.hero-orb-one { top: 15%; left: 8%; width: 8px; height: 8px; background: var(--gold); box-shadow: 0 0 22px 8px rgba(224,160,32,.28); animation: heroFloat 4.6s ease-in-out infinite; }
+.hero-orb-two { top: 33%; left: 31%; width: 5px; height: 5px; background: var(--success); box-shadow: 0 0 18px 6px rgba(32,201,151,.2); animation: heroFloat 5.8s 1s ease-in-out infinite reverse; }
+.hero-progress { position: absolute; right: 0; bottom: 0; left: 0; z-index: 2; height: 3px; overflow: hidden; background: rgba(255,255,255,.08); }
+.hero-progress span { display: block; width: 100%; height: 100%; transform-origin: left; background: linear-gradient(90deg, var(--gold), var(--success)); animation: heroProgress 2.85s linear both; }
+.hero-leaving .hero-image { transform: scale(1.14); transition: transform .7s ease; }
+
+@keyframes loginDrift { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(18px,-24px,0) scale(1.08); } }
+@keyframes loginOrbit { 0%,100% { transform: rotate(0deg) translateX(0); opacity: .45; } 50% { transform: rotate(180deg) translateX(26px); opacity: .9; } }
+@keyframes loginReveal { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes loginParticle { 0%,100% { transform: translate3d(0,18px,0) scale(.7); opacity: 0; } 25% { opacity: .8; } 70% { opacity: .35; } 100% { transform: translate3d(24px,-120px,0) scale(1.15); opacity: 0; } }
+@keyframes loginShine { 0% { transform: translateX(-120%) skewX(-18deg); opacity: 0; } 35% { opacity: .35; } 65%,100% { transform: translateX(150%) skewX(-18deg); opacity: 0; } }
+@keyframes loginDoorOpenLeft { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes loginDoorOpenRight { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes loginTransitionReveal { 0% { opacity: 0; transform: scale(1.04); } 35% { opacity: .9; } 100% { opacity: 1; transform: scale(1); } }
+.login-shell::before { content: ""; position: absolute; inset: -20%; background: radial-gradient(circle at 18% 22%, rgba(224,160,32,.18), transparent 24%), radial-gradient(circle at 86% 76%, rgba(32,201,151,.1), transparent 22%), linear-gradient(135deg, #070807, #11140f 48%, #080a09); animation: loginDrift 12s ease-in-out infinite alternate; }
+.login-grid { position: absolute; inset: 0; opacity: .18; background-image: linear-gradient(rgba(224,160,32,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(224,160,32,.12) 1px, transparent 1px); background-size: 72px 72px; mask-image: radial-gradient(ellipse at center, black, transparent 75%); transform: perspective(500px) rotateX(55deg) translateY(28%); }
+.login-transition-scene { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; background-image: linear-gradient(90deg, rgba(4,5,4,.76), rgba(7,7,5,.15) 48%, rgba(4,5,4,.7)), url('/images/login-transition.png'); background-position: center; background-size: cover; background-repeat: no-repeat; }
+.login-shell.is-leaving .login-transition-scene { animation: loginTransitionReveal 1.32s ease-out .48s both; }
+.login-orbit { position: absolute; z-index: 1; border: 1px solid rgba(224,160,32,.25); border-radius: 999px; pointer-events: none; animation: loginOrbit 11s ease-in-out infinite; }
+.login-orbit-one { width: 430px; height: 430px; top: -180px; left: -140px; box-shadow: 0 0 55px rgba(224,160,32,.1); }
+.login-orbit-two { width: 260px; height: 260px; right: 7%; bottom: -120px; border-color: rgba(32,201,151,.2); animation-delay: -3s; }
+.login-orbit-three { width: 80px; height: 80px; right: 19%; top: 16%; border-color: rgba(255,255,255,.22); animation-delay: -6s; }
+.login-particle { position: absolute; z-index: 2; width: 5px; height: 5px; border-radius: 999px; background: #f5c65d; box-shadow: 0 0 18px 5px rgba(224,160,32,.3); pointer-events: none; animation: loginParticle 7s ease-in-out infinite; }
+.login-particle-one { left: 14%; bottom: 18%; animation-delay: -1s; }
+.login-particle-two { left: 74%; bottom: 24%; animation-delay: -4s; background: #74dfb2; box-shadow: 0 0 18px 5px rgba(32,201,151,.25); }
+.login-particle-three { left: 62%; bottom: 10%; animation-delay: -5.5s; width: 3px; height: 3px; }
+.login-card { animation: loginReveal .8s cubic-bezier(.2,.8,.2,1) both; background: linear-gradient(125deg, rgba(23,23,20,.92), rgba(12,15,14,.96)); box-shadow: 0 30px 100px rgba(0,0,0,.5), 0 0 70px rgba(224,160,32,.07); }
+.login-card::after { content: ""; position: absolute; inset: -20% auto -20% -35%; z-index: 3; width: 24%; background: linear-gradient(90deg, transparent, rgba(255,220,133,.13), transparent); filter: blur(8px); pointer-events: none; animation: loginShine 8s 1.5s ease-in-out infinite; }
+.login-door { position: fixed; inset: 0 auto 0 0; z-index: 0; width: 50%; pointer-events: none; opacity: 1; background-image: linear-gradient(90deg, rgba(0,0,0,.24), rgba(0,0,0,.04) 45%, rgba(0,0,0,.3)), url('/images/login-door.png'); background-size: 200% 100%; background-position: left center; background-repeat: no-repeat; box-shadow: inset 0 0 130px rgba(0,0,0,.62), 0 0 30px rgba(0,0,0,.6); transform: scaleX(1); }
+.login-door-left { transform-origin: left center; }
+.login-door-right { left: auto; right: 0; transform-origin: right center; background-position: right center; }
+.login-door::before, .login-door::after { content: none; }
+.login-shell.is-leaving .login-door { animation: loginDoorOpenLeft 1.8s cubic-bezier(.65,0,.22,1) both; }
+.login-shell.is-leaving .login-door-right { animation-name: loginDoorOpenRight; animation-delay: .05s; }
+.login-visual { isolation: isolate; }
+.login-image { animation: heroImageDrift 10s ease-in-out infinite alternate; }
+.login-visual::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 20% 18%, rgba(255,205,92,.2), transparent 22%), linear-gradient(120deg, transparent 30%, rgba(255,221,132,.08), transparent 60%); animation: loginDrift 8s ease-in-out infinite alternate; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .login-shell::before, .login-orbit, .login-particle, .login-card, .login-card::after, .login-visual::after, .login-image, .login-door, .login-transition-scene { animation: none; } .login-shell.is-leaving .login-transition-scene { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .hero-stage, .hero-image, .hero-brand, .hero-crown, .hero-eyebrow, .hero-title,
+  .hero-description, .hero-action, .hero-meta, .hero-light-sweep, .hero-orb-one,
+  .hero-orb-two, .hero-progress span { animation: none; }
+}
+
+@media (max-width: 1023px) {
+  aside[dir="ltr"] button[aria-label="Admin account"] > span:nth-child(2),
+  aside[dir="ltr"] button[aria-label="Admin account"] > span:nth-child(3) { display: none; }
+}
+
+@media (max-width: 639px) {
+  main .text-4xl { font-size: 1.75rem; line-height: 1.1; }
+  main .text-3xl { font-size: 1.5rem; line-height: 1.15; }
+  main .text-2xl { font-size: 1.25rem; line-height: 1.2; }
+  main .text-xl { font-size: 1.05rem; line-height: 1.25; }
+  main .text-lg { font-size: .95rem; line-height: 1.3; }
+  main svg { max-width: 1.5rem; max-height: 1.5rem; }
+  main img { max-width: 100%; height: auto; }
+}
+
+/* Keep the Dashboard order status tabs inside their queue panel at every width. */
+aside header > div.mt-4 {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: stretch !important;
+  gap: .25rem !important;
+  overflow: hidden;
+}
+aside header > div.mt-4 > span {
+  min-width: 0 !important;
+  flex: 1 1 0 !important;
+  margin: 0 !important;
+  order: initial !important;
+  padding: .5rem .15rem !important;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 9px !important;
+  letter-spacing: -.02em;
+}
+aside header > div.mt-4 > span > b {
+  display: inline-block;
+  max-width: none !important;
+  margin-left: .15rem;
+  padding: .08rem .15rem !important;
+  overflow: visible !important;
+  vertical-align: middle;
+  font-size: 8px !important;
+  white-space: nowrap;
+}
+
+/* Keep dashboard table labels readable when the table column gets narrow. */
+main section > aside:first-child > div.space-y-1\.5 > button {
+  display: grid !important;
+  grid-template-columns: 1.65rem minmax(0, 1fr) 4.25rem .8rem;
+  align-items: center;
+  gap: .35rem;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span {
+  order: initial !important;
+  margin: 0 !important;
+}
+main section > aside:first-child button > span:nth-child(2),
+main section > aside:first-child button > span:nth-child(2) b,
+main section > aside:first-child button > span:nth-child(2) small,
+main section > aside:first-child button > span:nth-child(3) {
+  white-space: nowrap;
+}
+main section > aside:first-child button > span:nth-child(2) {
+  min-width: 0;
+}
+main section > aside:first-child button > span:nth-child(3) {
+  font-size: 10px;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span:first-child {
+  display: block;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 1.65rem;
+  overflow: hidden;
+  font-size: 0 !important;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3'/%3E%3Cpath d='M3.5 20c.6-3.1 2.4-5 5.5-5s4.9 1.9 5.5 5'/%3E%3Ccircle cx='17' cy='9' r='2.3'/%3E%3Cpath d='M15.2 15.2c2.5-.1 4.2 1.5 4.8 4.2'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3'/%3E%3Cpath d='M3.5 20c.6-3.1 2.4-5 5.5-5s4.9 1.9 5.5 5'/%3E%3Ccircle cx='17' cy='9' r='2.3'/%3E%3Cpath d='M15.2 15.2c2.5-.1 4.2 1.5 4.8 4.2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span:nth-child(3) {
+  display: inline-flex;
+  min-width: 4.25rem;
+  min-height: 1.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+  font-size: 10px !important;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span:nth-child(3)::first-letter {
+  font-size: 9px;
+}
+main section article.grid > span:last-child {
+  display: grid;
+  min-width: 5.25rem;
+  min-height: 1.5rem;
+  place-items: center;
+  white-space: nowrap;
+}
+
+/* Reference layout: table icon, table details, then a simple status on the right. */
+main section > aside:first-child > div.space-y-1\.5 > button {
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: .75rem !important;
+  min-height: 3.7rem;
+  padding: .65rem .75rem !important;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span {
+  order: initial !important;
+  margin: 0 !important;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span:first-child {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 1.5rem;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10h14v7H5z'/%3E%3Cpath d='M4 20h16M7 10V6h10v4M7 17v3M17 17v3'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10h14v7H5z'/%3E%3Cpath d='M4 20h16M7 10V6h10v4M7 17v3M17 17v3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span:nth-child(2) {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+main section > aside:first-child > div.space-y-1\.5 > button > span:nth-child(3) {
+  display: inline-flex !important;
+  min-width: auto !important;
+  min-height: 0 !important;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+}
+/* Compact, equal-width session actions. */
+main section header > div.flex.min-w-0.flex-nowrap > :is(span, button) {
+  min-width: 7.25rem !important;
+  width: 7.25rem !important;
+  min-height: 2.55rem !important;
+  height: 2.55rem !important;
+  padding: .25rem .55rem !important;
+  line-height: 1 !important;
+}
+main section header > div.flex.min-w-0.flex-nowrap {
+  gap: .5rem !important;
+  align-items: center !important;
+}
+main section header > div.flex.min-w-0.flex-nowrap > span:first-child {
+  margin-right: 1.5rem !important;
+  transform: none !important;
+}
+main section header > div.flex.min-w-0.flex-nowrap {
+  padding-left: .75rem !important;
+}
+main section header > div.flex.min-w-0.flex-nowrap > :is(span, button) > span:first-child {
+  width: 1.55rem !important;
+  height: 1.55rem !important;
+  flex-shrink: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: .5rem !important;
+  font-size: .85rem !important;
+}
+main section header > div.flex.min-w-0.flex-nowrap > :is(span, button) strong {
+  white-space: nowrap !important;
+  font-size: .72rem !important;
+}
+main section header > div.flex.min-w-0.flex-nowrap > :is(span, button) small {
+  white-space: nowrap !important;
+  font-size: .52rem !important;
+}
+
+/* Dashboard session actions mirror the compact reference toolbar. */
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.session-actions > * {
+  height: 2.45rem;
+  min-width: auto !important;
+  width: auto !important;
+  padding: .45rem .75rem !important;
+}
+.session-actions > span { min-width: 5.8rem !important; }
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  border-radius: .55rem;
+  border: 1px solid rgba(224,160,32,.58);
+  background: rgba(18,18,15,.86);
+  color: #f5ead7;
+  font-size: .75rem;
+  transition: background .2s ease, border-color .2s ease;
+}
+.action-button:hover { background: rgba(224,160,32,.12); border-color: var(--gold); }
+.action-button > span { display: inline !important; }
+.bill-action { color: #f4d18e; }
+.alert-action { color: #ffd198; }
+
+/* Scroll only inside the operational lists; the dashboard frame stays fixed. */
+.dashboard-table-list {
+  max-height: min(55vh, 33rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: .2rem;
+}
+.dashboard-drinks {
+  max-height: min(47vh, 30rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: .3rem;
+}
+.dashboard-table-list::-webkit-scrollbar,
+.dashboard-drinks::-webkit-scrollbar { width: .38rem; }
+.dashboard-table-list::-webkit-scrollbar-thumb,
+.dashboard-drinks::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(224,160,32,.48); }
+
+.queue-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.3rem; padding:.28rem; border:1px solid rgba(255,255,255,.09); border-radius:.8rem; background:#0b0d0c; }
+.queue-tab { display:flex; min-width:0; align-items:center; justify-content:center; gap:.18rem; border-radius:.58rem; padding:.48rem .2rem; color:rgba(255,255,255,.54); font-size:.64rem; transition:.2s ease; }
+.queue-tab:hover { background:rgba(255,255,255,.06); color:#fff; }
+.queue-tab span { font-size:.7rem; }
+.queue-tab b { display:grid; min-width:1.05rem; height:1.05rem; place-items:center; border-radius:999px; background:rgba(255,255,255,.1); color:#e8e1d5; font-size:.58rem; }
+.queue-tab.is-active { background:linear-gradient(135deg,rgba(224,160,32,.2),rgba(224,160,32,.07)); color:#ffd078; box-shadow:inset 0 -2px 0 var(--gold); }
+.queue-tab.is-active b { background:#aa721b; color:#171009; }
+
+/* Orders: keep the selected table readable while long queues and drink lists scroll independently. */
+.orders-queue-list { max-height: calc(100vh - 18.5rem); overflow-y:auto; overscroll-behavior:contain; padding-right:.3rem; }
+.order-details { display:flex; min-height:680px; flex-direction:column; }
+.order-details > .mt-4.space-y-3 { min-height:0; flex:1; max-height:calc(100vh - 20rem); overflow-y:auto; overscroll-behavior:contain; padding-right:.35rem; }
+.order-drinks-grid { display:grid; min-height:0; flex:1; grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr)); gap:.75rem; max-height:calc(100vh - 20rem); overflow-y:auto; overscroll-behavior:contain; padding-right:.35rem; align-content:start; }
+.orders-queue-list::-webkit-scrollbar,.order-details > .mt-4.space-y-3::-webkit-scrollbar,.order-drinks-grid::-webkit-scrollbar { width:.38rem; }
+.orders-queue-list::-webkit-scrollbar-thumb,.order-details > .mt-4.space-y-3::-webkit-scrollbar-thumb,.order-drinks-grid::-webkit-scrollbar-thumb { border-radius:999px; background:rgba(224,160,32,.45); }
+.drink-detail-card { position:relative; overflow:hidden; }
+.drink-detail-card::before { position:absolute; top:0; bottom:0; left:0; width:3px; background:linear-gradient(var(--gold),transparent); content:""; opacity:.7; }
+.drink-detail-card { background:linear-gradient(110deg,rgba(255,255,255,.045),rgba(255,255,255,.015)); box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
+.drink-detail-card:hover { border-color:rgba(224,160,32,.35); }
+.drink-detail-card > div { min-height:5.5rem; }
+.drink-detail-card label select { min-width:8.5rem; cursor:pointer; }
+.drink-detail-card .order-status-control { align-self:start; }
+.drink-detail-card .order-status-control select { box-shadow:inset 0 1px 0 rgba(255,255,255,.07); }
+.drink-reference-card { border-color:rgba(224,160,32,.38); background:radial-gradient(circle at 4% 6%,rgba(224,160,32,.16),transparent 27%),linear-gradient(120deg,rgba(255,255,255,.035),rgba(8,11,15,.22)); box-shadow:inset 3px 0 0 var(--gold),0 12px 28px rgba(0,0,0,.14); }
+.drink-reference-card .drink-spec { border-bottom:1px solid rgba(255,255,255,.09); }
+@media (min-width:640px) { .drink-reference-card .drink-spec:nth-child(1),.drink-reference-card .drink-spec:nth-child(2) { border-right:1px solid rgba(255,255,255,.09); } .drink-reference-card .drink-spec:nth-child(n+4) { border-bottom:0; } }
+.drink-reference-card .drink-note { min-height:3.2rem; display:flex; align-items:center; }
+
+/* Compact operational density for laptop and tablet screens. */
+@media (min-width: 640px) {
+  .orders-page > div { padding:1.25rem !important; }
+  .orders-page h1 { font-size:2rem !important; }
+  .orders-page h2 { font-size:1.65rem !important; }
+  .orders-page .mt-5 { margin-top:1rem !important; }
+  .orders-page .mt-4 { margin-top:.85rem !important; }
+  .orders-page .min-h-\[680px\] { min-height:0 !important; }
+  .orders-page .orders-queue-list { max-height:calc(100vh - 16rem); }
+  .orders-page .order-details { min-height:0; }
+  .orders-page .order-details > .mt-4.space-y-3,.orders-page .order-drinks-grid { max-height:calc(100vh - 17.5rem); }
+  .orders-page .drink-reference-card { padding:.7rem !important; border-radius:.85rem; }
+  .orders-page .drink-reference-card > div { gap:.7rem !important; grid-template-columns:3.55rem minmax(0,1fr) !important; min-height:0; }
+  .orders-page .drink-reference-card aside { gap:.35rem !important; }
+  .orders-page .drink-reference-card aside > span:first-child { width:2.6rem; height:2.6rem; font-size:.95rem; }
+  .orders-page .drink-reference-card aside > :nth-child(2) { width:2.8rem; height:2.8rem; }
+  .orders-page .drink-reference-card h3 { font-size:1.05rem !important; }
+  .orders-page .drink-reference-card header { padding-bottom:.5rem !important; gap:.5rem !important; }
+  .orders-page .drink-reference-card .order-status-control { min-width:6.75rem !important; font-size:8px !important; }
+  .orders-page .drink-reference-card .order-status-control select { min-width:6.75rem !important; padding:.42rem .55rem !important; font-size:.78rem !important; }
+  .orders-page .drink-reference-card .drink-spec { padding:.28rem .5rem !important; }
+  .orders-page .drink-reference-card .drink-spec > span:first-child { margin-right:.3rem; font-size:1.05rem; }
+  .orders-page .drink-reference-card .drink-spec > span:last-child > span:first-child { font-size:8px; }
+  .orders-page .drink-reference-card .drink-spec > span:last-child > span:last-child { font-size:.8rem; }
+  .orders-page .drink-reference-card .drink-note { min-height:2.05rem; margin-top:.45rem !important; padding:.4rem .65rem !important; font-size:.75rem; }
+}
+@media (min-width: 1024px) {
+  .orders-page .drink-reference-card { padding:.5rem .65rem !important; border-radius:.72rem; }
+  .orders-page .drink-reference-card > div { grid-template-columns:2.8rem minmax(0,1fr) !important; gap:.45rem !important; }
+  .orders-page .drink-reference-card aside > span:first-child { width:2rem; height:2rem; font-size:.76rem; }
+  .orders-page .drink-reference-card aside > :nth-child(2) { width:2.15rem; height:2.15rem; }
+  .orders-page .drink-reference-card h3 { font-size:1rem !important; }
+  .orders-page .drink-reference-card .drink-spec { padding:.14rem .35rem !important; }
+  .orders-page .drink-reference-card .drink-spec > span:first-child { margin-right:.22rem; font-size:.86rem; }
+  .orders-page .drink-reference-card .drink-spec > span:last-child > span:last-child { font-size:.8rem; }
+  .orders-page .drink-reference-card .drink-note { display:none; }
+  .orders-page .order-drinks-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem; }
+}
+.drink-owner-group { border:1px solid rgba(255,255,255,.09); border-radius:.9rem; background:rgba(0,0,0,.1); overflow:hidden; }
+.drink-owner-group > header { display:flex; align-items:center; gap:.55rem; padding:.55rem .75rem; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.025); }
+.drink-owner-group header b { display:block; font-size:.88rem; }
+.drink-owner-group header small { display:block; margin-top:.08rem; color:rgba(255,255,255,.45); font-size:.68rem; }
+.drink-owner-items { display:grid; gap:.45rem; padding:.45rem; }
+.drink-owner-items .drink-reference-card { min-height:0; }
+@media (min-width:1024px) {
+  .orders-page .orders-shell,.dashboard-shell { padding: .85rem !important; }
+  .orders-page .orders-workspace { gap:.75rem !important; }
+  .orders-page .orders-workspace > aside { width:100%; }
+  .orders-page .order-details { padding: .85rem !important; }
+  .orders-page .order-details > header { padding-bottom:.7rem !important; }
+  .orders-page .order-details > header h2 { font-size:1.5rem !important; }
+  .orders-page .order-details > .mt-4 { margin-top:.65rem !important; }
+  .orders-page .order-drinks-grid { margin-top:.65rem !important; }
+  .orders-page .drink-owner-group > header { padding:.4rem .6rem !important; }
+  .orders-page .drink-owner-items { padding:.45rem !important; gap:.45rem !important; }
+  .dashboard-shell > section { gap:.65rem !important; }
+}
+
+/* Premium dashboard table list */
+.dashboard-tables-panel { background:linear-gradient(160deg,#111312,#0d0f0e) !important; }
+.premium-table-list { display:flex; flex-direction:column; gap:.42rem; max-height:min(55vh,33rem); overflow-y:auto; padding:.05rem .1rem .1rem; }
+.premium-table-card { display:flex; min-height:3.45rem; width:100%; align-items:center; gap:.65rem; padding:.5rem .6rem; border:1px solid rgba(255,255,255,.1); border-radius:.72rem; color:#eee8dd; background:linear-gradient(110deg,rgba(255,255,255,.035),rgba(255,255,255,.012)); text-align:left; transition:border-color .2s,background .2s,transform .2s; }
+.premium-table-card:hover { border-color:rgba(224,160,32,.45); transform:translateX(1px); }
+.premium-table-card.is-selected { border-color:rgba(224,160,32,.85); background:linear-gradient(110deg,rgba(224,160,32,.2),rgba(224,160,32,.05)); box-shadow:0 0 18px rgba(224,160,32,.08); }
+.premium-table-icon { display:grid; width:2.1rem; height:2.1rem; flex:0 0 2.1rem; place-items:center; border-radius:999px; color:#d9a15b; background:rgba(255,255,255,.07); font-size:1.25rem; }
+.premium-table-icon { position:relative; font-size:0; animation:tableIconFloat 3.2s ease-in-out infinite; }
+.premium-table-icon::before { width:1.25rem; height:1.25rem; background:currentColor; content:""; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/contain no-repeat; }
+@keyframes tableIconFloat { 0%,100% { transform:translateY(0) rotate(0deg); } 50% { transform:translateY(-2px) rotate(-2deg); } }
+.premium-table-card.is-selected .premium-table-icon { color:#1b1308; background:var(--gold); }
+.premium-table-card.is-selected .premium-table-icon { animation:tableIconPulse 1.8s ease-in-out infinite; }
+@keyframes tableIconPulse { 0%,100% { box-shadow:0 0 0 0 rgba(224,160,32,0); } 50% { box-shadow:0 0 0 5px rgba(224,160,32,.14); } }
+
+/* Reuse the table icon treatment in Dashboard Order Queue cards. */
+aside .space-y-3.py-4 > button {
+  position:relative;
+  padding-left:3.1rem !important;
+  overflow:hidden;
+}
+aside .space-y-3.py-4 > button::before {
+  position:absolute;
+  top:50%;
+  left:.75rem;
+  width:1.45rem;
+  height:1.45rem;
+  border-radius:999px;
+  background:rgba(255,255,255,.07);
+  content:"";
+  transform:translateY(-50%);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/1rem no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/1rem no-repeat;
+  animation:tableIconFloat 3.2s ease-in-out infinite;
+}
+aside .space-y-3.py-4 > button:hover::before { background:var(--gold); box-shadow:0 0 0 5px rgba(224,160,32,.12); }
+
+/* Match Dashboard order rows to the premium Orders screen while keeping
+   cashier-only quantity and price columns visible. */
+.dashboard-drinks > div > div > article {
+  position:relative;
+  border-color:rgba(255,255,255,.13) !important;
+  border-left:3px solid rgba(224,160,32,.8) !important;
+  border-radius:.65rem !important;
+  background:linear-gradient(105deg,rgba(224,160,32,.07),rgba(255,255,255,.02) 42%,rgba(8,11,15,.3)) !important;
+  box-shadow:0 5px 16px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.dashboard-drinks > div > div > article:hover { border-color:rgba(224,160,32,.42) !important; }
+.dashboard-drinks > div > div > article img,
+.dashboard-drinks > div > div > article > div:first-child > span.grid { border:1px solid rgba(224,160,32,.18); box-shadow:0 3px 10px rgba(0,0,0,.18); }
+.dashboard-drinks > div > div > article > div:first-child > span.min-w-0 b { color:#f2ede3; font-size:.8rem; }
+.dashboard-drinks > div > div > article > div:first-child > span.min-w-0 small { color:#c7a66b; line-height:1.45; }
+.dashboard-drinks > div > div > article > span:last-child { border-radius:999px !important; font-weight:700; }
+.premium-table-info { display:flex; min-width:0; flex:1; flex-direction:column; gap:.15rem; }
+.premium-table-info b { overflow:hidden; font-size:.78rem; text-overflow:ellipsis; white-space:nowrap; }
+.premium-table-info small { color:rgba(255,255,255,.48); font-size:.62rem; }
+.premium-table-status { display:inline-flex; min-width:4.7rem; align-items:center; justify-content:center; padding:.32rem .42rem; border-radius:.55rem; background:rgba(255,255,255,.045); font-size:.58rem; font-weight:700; white-space:nowrap; }
+.premium-table-arrow { color:var(--gold); font-size:1.1rem; }
+.premium-table-summary { display:flex; align-items:center; justify-content:space-between; gap:.4rem; margin-top:.6rem; padding:.55rem .65rem; border:1px solid rgba(255,255,255,.08); border-radius:.65rem; color:rgba(255,255,255,.52); background:rgba(255,255,255,.025); font-size:.62rem; }
+@media (min-width:1024px) and (max-width:1279px) {
+  .orders-page .orders-workspace { grid-template-columns:260px minmax(0,1fr) !important; }
+  .orders-page .drink-owner-items { grid-template-columns:1fr !important; }
+  .dashboard-shell > section:last-of-type { grid-template-columns:210px minmax(0,1fr) !important; }
+}
+@media (min-width:1280px) {
+  .orders-page .orders-workspace { grid-template-columns:280px minmax(0,1fr) !important; }
+}
+.orders-shell,.dashboard-shell { width:100%; min-width:0; }
+@media (min-width:1024px) {
+  /* The shell already sits inside the main element's sidebar padding. Using
+     100vw here double-counts that padding at non-100% browser zoom levels. */
+  .orders-shell,.dashboard-shell { max-width:none; overflow-x:hidden; }
+  .orders-page .orders-workspace { min-height:calc(100vh - 15rem); }
+  .orders-page .order-details { max-height:calc(100vh - 15rem); overflow:hidden; }
+  .orders-page .order-drinks-grid { max-height:none; overflow-y:auto; }
+  .dashboard-shell { max-width:none; overflow-x:hidden; }
+}
+.order-queue-card { position:relative; }
+.order-queue-card:hover { transform:translateX(2px); }
+@media (min-width: 640px) {
+  .drink-detail-card > div > div:first-child { align-items:center; }
+  .drink-detail-card h3 { font-size:1.05rem; }
+}
+
+/* Final Orders layout: one full-width owner group, compact drink cards inside it. */
+.orders-page .order-drinks-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: .75rem !important;
+}
+.orders-page > div { width:100%; }
+@media (min-width:1024px) {
+  .orders-page > div { max-width:1500px; padding-left:1rem !important; padding-right:1rem !important; }
+  .orders-page .orders-workspace { min-width:0; }
+  .orders-page .orders-workspace > * { min-width:0; }
+}
+.orders-page .drink-owner-group {
+  width: 100%;
+  min-width: 0;
+}
+.orders-page .drink-owner-items {
+  grid-template-columns: minmax(0, 1fr);
+  gap: .65rem;
+  padding: .65rem;
+}
+.orders-page .drink-reference-card {
+  width: 100%;
+  min-width: 0;
+  height: auto !important;
+  padding: .8rem !important;
+}
+.orders-page .drink-reference-card > div {
+  min-height: 0 !important;
+  grid-template-columns: 4rem minmax(0, 1fr) !important;
+  gap: .8rem !important;
+}
+.orders-page .drink-reference-card aside > span:first-child {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  font-size: .9rem !important;
+}
+.orders-page .drink-reference-card aside > :nth-child(2) {
+  width: 3rem !important;
+  height: 3rem !important;
+}
+.orders-page .drink-reference-card h3 {
+  font-size: 1rem !important;
+  line-height: 1.25 !important;
+}
+.orders-page .drink-reference-card .order-status-control {
+  min-width: 7.5rem !important;
+  font-size: .58rem !important;
+}
+.orders-page .drink-reference-card .order-status-control select {
+  min-width: 7.5rem !important;
+  padding: .48rem .65rem !important;
+  font-size: .8rem !important;
+}
+.orders-page .drink-reference-card .drink-spec {
+  padding: .35rem .5rem !important;
+}
+.orders-page .drink-reference-card .drink-spec > span:first-child {
+  margin-right: .35rem !important;
+  font-size: 1rem !important;
+}
+.orders-page .drink-reference-card .drink-spec > span:last-child > span:first-child {
+  font-size: .58rem !important;
+}
+.orders-page .drink-reference-card .drink-spec > span:last-child > span:last-child {
+  font-size: .82rem !important;
+}
+.orders-page .drink-reference-card .drink-note {
+  display: flex !important;
+  min-height: 2.25rem !important;
+  margin-top: .55rem !important;
+  padding: .45rem .7rem !important;
+  font-size: .75rem !important;
+}
+@media (min-width: 1100px) {
+  .orders-page .drink-owner-items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1099px) {
+  .orders-page .drink-reference-card > div {
+    grid-template-columns: 3.5rem minmax(0, 1fr) !important;
+  }
+}
+
+/* Compact barista card: content defines height; no display-card whitespace. */
+.compact-drink-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(224,160,32,.42);
+  border-left: 3px solid var(--gold);
+  border-radius: .8rem;
+  background: linear-gradient(120deg,rgba(224,160,32,.08),rgba(255,255,255,.018) 35%);
+}
+.compact-drink-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .65rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.compact-drink-title { display:flex; min-width:0; align-items:center; gap:.6rem; }
+.compact-drink-title > img,.compact-drink-title > span { width:2.5rem; height:2.5rem; flex:0 0 2.5rem; border-radius:.65rem; object-fit:cover; }
+.compact-drink-title > span { display:grid; place-items:center; background:rgba(255,255,255,.05); }
+.compact-drink-title h3 { overflow:hidden; margin:0; font-size:.95rem; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
+.compact-drink-title small { display:block; margin-top:.18rem; color:var(--gold); font-size:.66rem; }
+.compact-drink-card header > label { display:flex; flex:0 0 7rem; flex-direction:column; gap:.2rem; color:rgba(255,255,255,.45); font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; }
+.compact-drink-card header select { width:100%; min-width:0; padding:.4rem .5rem; border-width:1px; border-radius:.5rem; outline:0; font-size:.76rem; font-weight:700; text-transform:none; }
+.compact-specs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); padding:.45rem .75rem; }
+.compact-spec { min-width:0; padding:.32rem .5rem; border-right:1px solid rgba(255,255,255,.07); }
+.compact-spec:nth-child(3n) { border-right:0; }
+.compact-spec small { display:block; color:rgba(255,255,255,.42); font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; }
+.compact-spec b { display:block; overflow:hidden; margin-top:.15rem; color:rgba(255,255,255,.9); font-size:.75rem; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.compact-note { margin:0 .75rem .65rem; padding:.45rem .6rem; border:1px solid rgba(105,169,255,.2); border-radius:.55rem; color:rgba(255,255,255,.62); background:rgba(105,169,255,.04); font-size:.7rem; }
+.compact-note b { color:#79aeff; }
+@media (max-width:639px) {
+  .compact-drink-card > header { align-items:flex-start; flex-direction:column; }
+  .compact-drink-card header > label { width:100%; flex-basis:auto; }
+  .compact-specs { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .compact-spec:nth-child(3n) { border-right:1px solid rgba(255,255,255,.07); }
+  .compact-spec:nth-child(2n) { border-right:0; }
+}
+
+/* Laptop density: keep the same composition without oversized cards at
+   reduced CSS viewports (including browser zoom and Windows scaling). */
+@media (min-width:1024px) and (max-width:1399px) {
+  .orders-page > div { padding:.75rem !important; }
+  .orders-page .orders-workspace { grid-template-columns:minmax(220px,27%) minmax(0,1fr) !important; }
+  .orders-page .order-details { padding:.75rem !important; }
+  .orders-page .order-details > header h2 { font-size:1.3rem !important; }
+  .orders-page .drink-owner-items { gap:.45rem !important; padding:.45rem !important; }
+  .orders-page .drink-reference-card { padding:.55rem !important; }
+  .orders-page .drink-reference-card h3 { font-size:.9rem !important; }
+  .orders-page .drink-reference-card .drink-spec > span:last-child > span:last-child { font-size:.72rem !important; }
+  .orders-page .orders-queue-list { max-height:calc(100dvh - 14rem); }
+}
+
+/* A 1920px monitor at 125% browser/Windows scaling reports roughly 1536px
+   CSS width. Treat that range as laptop density so cards do not look zoomed. */
+@media (min-width:1400px) and (max-width:1700px) {
+  .orders-page > div { max-width:1280px !important; margin-inline:auto; padding:.85rem !important; }
+  .dashboard-shell { max-width:1280px !important; margin-inline:auto; padding:.85rem !important; }
+  .dashboard-shell h1 { font-size:1.7rem !important; }
+  .dashboard-shell h2 { font-size:1.25rem !important; }
+  .orders-page .orders-workspace { grid-template-columns:260px minmax(0,1fr) !important; gap:.65rem !important; }
+  .orders-page .order-details { padding:.75rem !important; }
+  .orders-page .order-details > header h2 { font-size:1.35rem !important; }
+  .orders-page .drink-owner-items { gap:.5rem !important; padding:.5rem !important; }
+  .orders-page .drink-reference-card { padding:.6rem !important; }
+  .orders-page .drink-reference-card h3 { font-size:.92rem !important; }
+  .orders-page .drink-reference-card .drink-spec { padding:.22rem .4rem !important; }
+  .orders-page .drink-reference-card .drink-spec > span:last-child > span:last-child { font-size:.74rem !important; }
+  .orders-page .orders-queue-list { max-height:calc(100dvh - 14rem); }
+}
+
+/* Redesigned order details: owner cards sit in a responsive grid and the
+   drink list scrolls inside the panel instead of stretching the whole page. */
+.orders-page .order-details {
+  min-height: 0 !important;
+  max-height: calc(100dvh - 10.5rem) !important;
+  overflow: hidden !important;
+}
+.orders-page .order-details > header {
+  flex: 0 0 auto;
+  padding-bottom: .75rem !important;
+  gap: .75rem !important;
+}
+.orders-page .order-details > header h2 {
+  margin-top: .2rem !important;
+  font-size: 1.55rem !important;
+}
+.orders-page .order-details > header label {
+  min-width: 9.5rem !important;
+}
+.orders-page .order-details > header select {
+  padding: .55rem .7rem !important;
+  border-radius: .7rem !important;
+}
+.orders-page .order-details > .mt-4.flex {
+  flex: 0 0 auto;
+  margin-top: .65rem !important;
+  padding: .6rem .75rem !important;
+}
+.orders-page .order-details > .mt-4.flex p { font-size: .72rem !important; }
+.orders-page .order-details > .mt-4.flex button { padding: .5rem .75rem !important; font-size: .72rem !important; }
+.orders-page .order-details .order-drinks-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
+  padding: .1rem .3rem .35rem .05rem !important;
+  gap: .65rem !important;
+}
+.orders-page .drink-owner-group {
+  min-width: 0;
+  align-self: start;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  overflow: visible;
+}
+.orders-page .drink-owner-group > header {
+  margin: .15rem 0 .35rem;
+  padding: 0 .15rem .3rem !important;
+  border-bottom: 1px solid rgba(224,160,32,.22) !important;
+  background: transparent !important;
+}
+.orders-page .drink-owner-group header b { font-size: .78rem; }
+.orders-page .drink-owner-group header small { font-size: .6rem; }
+.orders-page .drink-owner-items {
+  grid-template-columns: 1fr !important;
+  gap: .45rem !important;
+  padding: 0 !important;
+}
+.orders-page .compact-drink-card {
+  width: 100%;
+  max-width: none;
+  border-color: rgba(255,255,255,.13);
+  border-left-color: var(--gold);
+  border-radius: .65rem;
+  background: linear-gradient(105deg,rgba(224,160,32,.07),rgba(255,255,255,.025) 42%,rgba(8,11,15,.3));
+  box-shadow: 0 5px 16px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.045);
+}
+.orders-page .premium-drink-row .compact-specs {
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+}
+.orders-page .premium-drink-row .compact-spec {
+  min-height: 2.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.orders-page .premium-drink-row .compact-note:has(b) {
+  color: #b9c9e5;
+}
+
+/* Premium single-row order table */
+.orders-page .premium-order-panel { background: linear-gradient(135deg,#111310,#0d0f0e) !important; }
+.orders-page .premium-order-header { display:grid; grid-template-columns:1fr 1fr auto; align-items:center; }
+.premium-table-heading,.premium-owner-heading { display:flex; align-items:center; gap:.6rem; }
+.premium-coffee-mark { color:var(--gold); font-size:1.65rem; }
+.premium-table-heading p { margin:0; color:#f0bd5c; font-size:1.35rem; font-weight:800; letter-spacing:.05em; }
+.premium-table-heading small { color:rgba(255,255,255,.48); font-size:.68rem; }
+.premium-owner-heading b { color:#f1c26b; font-size:.9rem; }
+.premium-order-toolbar { display:flex; align-items:center; gap:.8rem; margin-top:.65rem; padding:.5rem .7rem; color:rgba(255,255,255,.55); font-size:.68rem; }
+.premium-order-toolbar p { margin:0; flex:1; }
+.premium-order-toolbar button { border:1px solid rgba(224,160,32,.65); border-radius:.45rem; padding:.4rem .65rem; color:#1b1307; background:#e5aa3a; font-size:.68rem; font-weight:700; }
+.premium-order-columns,.premium-drink-row { display:grid; grid-template-columns:3.2rem minmax(12rem,1.7fr) repeat(5,minmax(5.5rem,1fr)) minmax(8rem,1.1fr) minmax(7.5rem,.95fr); align-items:center; }
+.premium-order-columns { padding:.35rem .55rem; color:rgba(255,255,255,.6); font-size:.58rem; letter-spacing:.11em; }
+.premium-order-rows { display:block !important; overflow-y:auto !important; }
+.premium-order-rows .drink-owner-group { margin-top:.45rem; }
+.premium-order-rows .drink-owner-group > header { display:flex; align-items:center; gap:.5rem; margin:.65rem 0 .25rem; padding:.2rem .55rem .3rem !important; border-bottom:1px solid rgba(224,160,32,.22) !important; }
+.premium-order-rows .drink-owner-items { display:block !important; padding:0 !important; }
+.premium-order-rows .premium-drink-row { margin:.22rem 0; }
+.orders-page .premium-drink-row { min-width:0; min-height:4.25rem; overflow:hidden; border:1px solid rgba(255,255,255,.1); border-left:3px solid rgba(224,160,32,.9); border-radius:.55rem; background:linear-gradient(105deg,rgba(255,255,255,.045),rgba(255,255,255,.012)); }
+.premium-qty { color:#f3c875; font-size:1.15rem; font-weight:700; text-align:center; }
+.premium-drink-name { display:flex; min-width:0; align-items:center; gap:.55rem; padding:.35rem .45rem; }
+.premium-drink-name img,.premium-drink-name > span { width:2.45rem; height:2.45rem; flex:0 0 2.45rem; border-radius:.5rem; object-fit:cover; }
+.premium-drink-name > span { display:grid; place-items:center; background:rgba(255,255,255,.07); }
+.premium-drink-name strong { overflow:hidden; color:#f1eee8; font-size:.78rem; text-overflow:ellipsis; white-space:nowrap; }
+.premium-data-cell { min-width:0; padding:.25rem .45rem; border-left:1px solid rgba(255,255,255,.08); }
+.premium-data-cell small { display:block; color:rgba(255,255,255,.42); font-size:.5rem; letter-spacing:.08em; }
+.premium-data-cell b { display:block; overflow:hidden; margin-top:.12rem; color:#eee9df; font-size:.7rem; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.premium-note-cell { overflow:hidden; padding:.25rem .45rem; color:#e9bc67; font-size:.66rem; text-overflow:ellipsis; white-space:nowrap; }
+.premium-status-cell { display:flex; min-width:0; align-items:center; justify-content:center; gap:.35rem; margin-right:.4rem; padding:.35rem .45rem; border:1px solid; border-radius:999px; font-size:.62rem; font-weight:700; }
+.premium-status-cell select { min-width:0; max-width:6.2rem; border:0; outline:0; color:inherit; background:transparent; font-size:.65rem; font-weight:700; }
+@media (max-width:1100px) {
+  .orders-page .premium-order-header { grid-template-columns:1fr auto; }
+  .premium-owner-heading { display:none; }
+  .premium-order-columns,.premium-drink-row { grid-template-columns:2.5rem minmax(9rem,1.5fr) repeat(5,minmax(4.2rem,1fr)) minmax(6rem,.9fr) minmax(6.2rem,.8fr); }
+  .premium-data-cell b { font-size:.62rem; }
+}
+@media (max-width:720px) {
+  .premium-order-columns { display:none; }
+  .orders-page .premium-drink-row { display:grid; grid-template-columns:2.5rem minmax(0,1fr) 6.5rem; padding:.35rem; }
+  .premium-drink-name { grid-column:2; }
+  .premium-status-cell { grid-column:3; grid-row:1; }
+  .premium-data-cell { border-top:1px solid rgba(255,255,255,.06); border-left:0; }
+  .premium-note-cell { grid-column:2 / -1; }
+}
+
+/* Each drink owns its own fields; no shared/fixed table columns. */
+.orders-page .premium-order-columns { display:none !important; }
+.orders-page .premium-drink-row { display:block !important; min-height:0; padding:.45rem .6rem; }
+.orders-page .premium-drink-row-head { display:grid; grid-template-columns:2.7rem minmax(0,1fr) auto; align-items:center; gap:.5rem; }
+.orders-page .premium-drink-row .premium-status-cell { margin:0; }
+.orders-page .premium-dynamic-details { display:flex; flex-wrap:wrap; gap:.15rem 0; margin:.35rem 0 0 3.2rem; }
+.orders-page .premium-dynamic-details .premium-data-cell,
+.orders-page .premium-dynamic-details .premium-note-cell { flex:0 1 auto; min-width:6.8rem; padding:.2rem .65rem; border-left:1px solid rgba(255,255,255,.08); }
+.orders-page .premium-dynamic-details .premium-note-cell { min-width:10rem; color:#e9bc67; }
+@media (max-width:720px) {
+  .orders-page .premium-drink-row-head { grid-template-columns:2.3rem minmax(0,1fr); }
+  .orders-page .premium-drink-row-head .premium-status-cell { grid-column:2; justify-self:start; }
+  .orders-page .premium-dynamic-details { margin-left:2.8rem; }
+}
+
+/* Orders screen row treatment mirrors the compact dashboard order design. */
+.orders-page .premium-order-rows .premium-drink-row {
+  padding:.42rem .55rem !important;
+  border-color:rgba(255,255,255,.13) !important;
+  border-left:2px solid rgba(224,160,32,.88) !important;
+  border-radius:.62rem !important;
+  background:linear-gradient(105deg,rgba(224,160,32,.08),rgba(255,255,255,.025) 42%,rgba(8,11,15,.3)) !important;
+  box-shadow:0 4px 13px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.orders-page .premium-drink-row-head { grid-template-columns:2.55rem minmax(0,1fr) auto; gap:.45rem; }
+.orders-page .premium-qty { font-size:1rem; }
+.orders-page .premium-drink-name { gap:.5rem; padding:.2rem .35rem; }
+.orders-page .premium-drink-name img,
+.orders-page .premium-drink-name > span { width:2.35rem; height:2.35rem; flex-basis:2.35rem; border-radius:.48rem; }
+.orders-page .premium-drink-name strong { font-size:.78rem; }
+.orders-page .premium-dynamic-details { display:flex; min-height:1rem; align-items:center; gap:0; margin:.1rem 0 0 3rem; white-space:nowrap; overflow:hidden; }
+.orders-page .premium-dynamic-details .premium-data-cell { display:inline-flex; min-width:0; align-items:baseline; gap:.2rem; padding:0 .38rem; border-left:0; }
+.orders-page .premium-dynamic-details .premium-data-cell small { display:inline; flex:0 0 auto; color:rgba(255,255,255,.5); font-size:.52rem; letter-spacing:0; }
+.orders-page .premium-dynamic-details .premium-data-cell small::after { content:":"; }
+.orders-page .premium-dynamic-details .premium-data-cell b { overflow:hidden; color:#d8b16a; font-size:.62rem; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.orders-page .premium-dynamic-details .premium-data-cell:not(:last-child) b::after { color:rgba(255,255,255,.3); content:" ·"; }
+.orders-page .premium-dynamic-details .premium-note-cell { min-width:0; overflow:hidden; padding:0 .38rem; color:#d8b16a; font-size:.62rem; text-overflow:ellipsis; white-space:nowrap; }
+.orders-page .premium-status-cell { min-width:5.6rem; padding:.32rem .45rem; font-size:.58rem; }
+.orders-page .premium-status-cell select { max-width:4.6rem; font-size:.6rem; }
+
+/* Custom premium status menu (avoids the browser's unstyled native list). */
+.premium-status-select { position:relative; z-index:4; min-width:6.6rem; }
+.orders-page .premium-drink-row { position:relative; overflow:visible !important; z-index:1; }
+.orders-page .premium-drink-row:has(.premium-status-menu) { z-index:30; }
+.orders-page .premium-order-rows .drink-owner-group:has(.premium-status-menu) { position:relative; z-index:20; }
+.orders-page .premium-order-rows .drink-owner-items { overflow:visible; }
+.premium-status-select > button { display:flex; width:100%; align-items:center; gap:.35rem; padding:.38rem .5rem; border:1px solid rgba(255,255,255,.2); border-radius:999px; color:#eee9df; background:rgba(12,14,14,.92); font-size:.62rem; font-weight:700; cursor:pointer; transition:border-color .2s,box-shadow .2s; }
+.premium-status-select > button:hover { border-color:var(--gold); box-shadow:0 0 0 3px rgba(224,160,32,.1); }
+.premium-status-select .status-chevron { margin-left:auto; color:rgba(255,255,255,.55); font-size:.8rem; line-height:1; }
+.premium-status-select .status-dot { width:.42rem; height:.42rem; flex:0 0 .42rem; border-radius:999px; background:#9da2a6; box-shadow:0 0 7px currentColor; }
+.premium-status-select .status-dot.new { color:#69a9ff; background:#69a9ff; }
+.premium-status-select .status-dot.preparing { color:#f4b43f; background:#f4b43f; }
+.premium-status-select .status-dot.ready { color:#20c997; background:#20c997; } .premium-status-select .status-dot.delivered { color:#c9a7ff; background:#c9a7ff; }
+.premium-status-select .status-dot.cancelled { color:#f27d72; background:#f27d72; }
+.premium-status-select.new > button { border-color:rgba(105,169,255,.6); color:#8fc1ff; }
+.premium-status-select.preparing > button { border-color:rgba(244,180,63,.62); color:#ffc862; }
+.premium-status-select.ready > button { border-color:rgba(32,201,151,.62); color:#7ee5a1; } .premium-status-select.delivered > button { border-color:rgba(201,167,255,.62); color:#d8c4ff; }
+.premium-status-select.cancelled > button { border-color:rgba(242,125,114,.62); color:#ff9b91; }
+.premium-status-menu { position:absolute; top:calc(100% + .35rem); right:0; min-width:9.2rem; padding:.3rem; border:1px solid rgba(224,160,32,.42); border-radius:.7rem; background:linear-gradient(155deg,#1b1d1a,#0d0f0e); box-shadow:0 14px 30px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04) inset; animation:statusMenuIn .16s ease-out both; }
+.premium-status-menu button { display:flex; width:100%; align-items:center; gap:.5rem; padding:.48rem .55rem; border:0; border-radius:.48rem; color:rgba(255,255,255,.72); background:transparent; font-size:.68rem; text-align:left; cursor:pointer; transition:background .15s,color .15s; }
+.premium-status-menu button:hover,.premium-status-menu button.is-current { color:#fff; background:rgba(224,160,32,.14); }
+.premium-status-menu .status-check { margin-left:auto; color:var(--gold); }
+@keyframes statusMenuIn { from { opacity:0; transform:translateY(-4px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+
+/* Animated table identity in the Orders queue. */
+.order-queue-table-title { display:flex; min-width:0; align-items:center; gap:.6rem; }
+.order-queue-table-title > div { min-width:0; }
+.order-queue-table-title b { display:block; color:#f0c36e; font-size:.95rem; }
+.order-queue-table-icon { display:block; width:2rem; height:2rem; flex:0 0 2rem; border:1px solid rgba(224,160,32,.35); border-radius:999px; background:rgba(224,160,32,.1); animation:tableIconFloat 3.2s ease-in-out infinite; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/1.15rem no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/1.15rem no-repeat; }
+.order-queue-card:hover .order-queue-table-icon { background:var(--gold); box-shadow:0 0 0 5px rgba(224,160,32,.1); }
+
+/* Orders screen left queue uses the same premium table list as Dashboard. */
+.orders-table-list { display:flex; max-height:calc(100dvh - 19rem); flex-direction:column; gap:.42rem; overflow-y:auto; padding:.05rem .1rem; }
+.orders-table-card { display:flex; min-height:3.45rem; width:100%; align-items:center; gap:.6rem; padding:.5rem .55rem; border:1px solid rgba(255,255,255,.1); border-radius:.72rem; color:#eee8dd; background:linear-gradient(110deg,rgba(255,255,255,.035),rgba(255,255,255,.012)); text-align:left; transition:border-color .2s,background .2s,transform .2s; }
+.orders-table-card:hover { border-color:rgba(224,160,32,.45); transform:translateX(1px); }
+.orders-table-card.new-order-alert { animation: newTableAlert 1.8s ease-in-out infinite; border-color:rgba(105,169,255,.8); background:linear-gradient(110deg,rgba(105,169,255,.18),rgba(105,169,255,.045)); }
+@keyframes newTableAlert { 0%,100% { box-shadow:0 0 0 rgba(224,160,32,0); } 35% { border-color:rgba(224,160,32,.95); box-shadow:0 0 0 5px rgba(224,160,32,.16),0 0 24px rgba(224,160,32,.28); } }
+.orders-table-card.is-selected { border-color:rgba(224,160,32,.85); background:linear-gradient(110deg,rgba(224,160,32,.2),rgba(224,160,32,.05)); box-shadow:0 0 18px rgba(224,160,32,.08); }
+.orders-table-icon { display:block; width:2rem; height:2rem; flex:0 0 2rem; border-radius:999px; background:rgba(255,255,255,.07); animation:tableIconFloat 3.2s ease-in-out infinite; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/1.15rem no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10h16M6 10v8M18 10v8M3 18h18M8 10V6h8v4M9 18v3M15 18v3'/%3E%3C/svg%3E") center/1.15rem no-repeat; }
+.orders-table-card.is-selected .orders-table-icon { background:var(--gold); box-shadow:0 0 0 5px rgba(224,160,32,.12); }
+.orders-table-info { display:flex; min-width:0; flex:1; flex-direction:column; gap:.13rem; }
+.orders-table-info b { overflow:hidden; color:#f0c36e; font-size:.78rem; text-overflow:ellipsis; white-space:nowrap; }
+.orders-table-info small { color:rgba(255,255,255,.48); font-size:.6rem; }
+.orders-table-status { display:inline-flex; min-width:4.7rem; justify-content:center; padding:.3rem .38rem; border-radius:.55rem; background:rgba(255,255,255,.045); font-size:.57rem; font-weight:700; white-space:nowrap; }
+.orders-table-status.new { color:#8fc1ff; }
+.orders-table-status.preparing { color:#ffc862; }
+.orders-table-status.ready { color:#7ee5a1; }
+.orders-table-status.delivered { color:#c9a7ff; }
+.orders-table-status.cancelled { color:#ff9b91; }
+.orders-table-arrow { color:var(--gold); font-size:1.1rem; }
+.orders-table-summary { display:flex; align-items:center; justify-content:space-between; margin-top:.6rem; padding:.55rem .6rem; border:1px solid rgba(255,255,255,.08); border-radius:.65rem; color:rgba(255,255,255,.52); font-size:.6rem; }
+.orders-table-summary .ready { color:#73d68d; }.orders-table-summary .preparing { color:#f4b43f; }.orders-table-summary .new { color:#8d75e8; }
+.orders-page .orders-table-card { min-height:4rem; gap:.75rem; padding:.62rem .7rem; }
+.orders-page .orders-table-card { justify-content:space-between; }
+.orders-page .orders-table-icon { width:2.35rem; height:2.35rem; flex-basis:2.35rem; background-size:1.35rem; }
+.orders-page .orders-table-info b { font-size:.9rem; }
+.orders-page .orders-table-info small { font-size:.68rem; }
+.orders-page .orders-table-status { min-width:5.4rem; padding:.38rem .48rem; font-size:.64rem; }
+.orders-page .orders-table-status { flex:0 0 auto; margin-left:.45rem; }
+.orders-page .premium-order-toolbar > span { display:none; }
+.orders-page .premium-order-toolbar p { font-size:.78rem; }
+.orders-page .premium-drink-name strong { font-size:.86rem; }
+.orders-page .premium-drink-name img,
+.orders-page .premium-drink-name > span { width:2.55rem; height:2.55rem; flex-basis:2.55rem; }
+.orders-page .premium-qty { font-size:1.1rem; }
+
+/* Give the table rail enough room for full labels and keep long lists local. */
+@media (min-width:1024px) {
+  .orders-page .orders-workspace { grid-template-columns:285px minmax(0,1fr) !important; }
+  .orders-page .orders-table-queue { min-width:0; }
+  .orders-page .orders-table-list { max-height:calc(100dvh - 16rem); overflow-y:auto; overscroll-behavior:contain; padding-right:.25rem; }
+  .orders-page .orders-table-card { min-width:0; }
+  .orders-page .orders-table-info b { overflow:visible; text-overflow:clip; white-space:nowrap; font-size:1rem; }
+  .orders-page .orders-table-info small { font-size:.7rem; }
+  .orders-page .orders-table-status { font-size:.68rem; }
+}
+@media (min-width:1280px) {
+  .orders-page .orders-workspace { grid-template-columns:305px minmax(0,1fr) !important; }
+}
+
+.orders-page .premium-dynamic-details .premium-data-cell b,
+.orders-page .premium-dynamic-details .premium-note-cell { font-size:.76rem; }
+.orders-page .premium-dynamic-details .premium-data-cell { padding-inline:.48rem; }
+.orders-page .orders-table-card { min-height:3.8rem; padding:.5rem .55rem; }
+.orders-page .orders-table-icon { width:2.55rem; height:2.55rem; flex-basis:2.55rem; background-size:1.5rem; animation:tableIconFloat 2.8s ease-in-out infinite; }
+.orders-page .orders-table-card.is-selected .orders-table-icon { animation:tableIconPulse 1.6s ease-in-out infinite,tableIconFloat 2.8s ease-in-out infinite; }
+.orders-page .compact-drink-card > header { padding: .5rem .6rem !important; }
+.orders-page .compact-drink-title > img,
+.orders-page .compact-drink-title > span { width: 2.15rem; height: 2.15rem; flex-basis: 2.15rem; }
+.orders-page .compact-drink-title { gap: .45rem; }
+.orders-page .compact-drink-title h3 { font-size: .82rem; }
+.orders-page .compact-drink-title small { font-size: .58rem; }
+.orders-page .compact-drink-card header > label { flex-basis: 6rem; font-size: .48rem; }
+.orders-page .compact-drink-card header select { padding: .32rem .4rem; font-size: .68rem; }
+.orders-page .compact-specs { padding: .3rem .55rem; }
+.orders-page .compact-spec { padding: .25rem .4rem; }
+.orders-page .compact-spec small { font-size: .48rem; }
+.orders-page .compact-spec b { font-size: .68rem; }
+.orders-page .compact-note { margin: 0 .55rem .5rem; padding: .35rem .5rem; font-size: .62rem; }
+.products-page aside span {
+  border-radius: 9999px;
+}
+.products-page section.mt-5 > div > button:nth-child(3) {
+  display: none;
+}
+.products-page aside > section:nth-child(2) {
+  display: none;
+}
+.products-page > div > header > div:last-child > button {
+  padding: 1.2rem 1.9rem;
+  font-size: 1rem;
+}
+.products-page > div > header > div:last-child > label {
+  display: flex;
+  width: 21rem;
+  min-height: 3.5rem;
+  padding: 0.9rem 1.1rem;
+}
+.products-page article > div:first-child > button {
+  font-size: 0;
+}
+.products-page article > div:first-child > button::after {
+  content: "×";
+  font-size: 1.25rem;
+}
+.products-page section.grid > article > div:last-child > div:last-child > span {
+  display: none;
+}
+.products-page section.grid > article > div:last-child > div:last-child > button {
+  min-height: 2.75rem;
+  padding-inline: 1.25rem;
+  border-color: rgba(224,160,32,.55);
+  background: linear-gradient(135deg, rgba(224,160,32,.18), rgba(224,160,32,.05));
+  color: #f5ca72;
+  font-weight: 600;
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.products-page section.grid > article > div:last-child > div:last-child > button:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(224,160,32,.32), rgba(224,160,32,.1));
+  box-shadow: 0 8px 18px rgba(224,160,32,.14);
+}
+.products-page section.grid > article > div:first-child {
+  aspect-ratio: 1.3;
+}
+
+/* Locale-aware manager shell. English keeps the original left rail; Arabic
+   mirrors navigation and reading flow while technical values remain LTR. */
+html[dir="rtl"] .manager-sidebar {
+  right: 0;
+  left: auto;
+  border-right: 0;
+  border-left: 1px solid rgba(255,255,255,.08);
+  direction: rtl;
+}
+html[dir="rtl"] .manager-page {
+  padding-right: 4rem;
+  padding-left: 0;
+  direction: rtl;
+}
+html[dir="rtl"] .dashboard-shell > [dir="ltr"] {
+  direction: rtl !important;
+}
+
+html[dir="rtl"] .manager-notification-stack,
+html[dir="rtl"] .manager-locale-toast {
+  right: auto;
+  left: 1rem;
+}
+html[dir="rtl"] .manager-page .text-left,
+html[dir="rtl"] .manager-sidebar .text-left,
+html[dir="rtl"] .orders-table-card,
+html[dir="rtl"] .premium-status-menu button {
+  text-align: right;
+}
+html[dir="rtl"] .premium-status-select .status-chevron,
+html[dir="rtl"] .premium-status-menu .status-check,
+html[dir="rtl"] .manager-sidebar nav b {
+  margin-right: auto;
+  margin-left: 0;
+}
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[type="number"],
+html[dir="rtl"] [data-ltr],
+html[dir="rtl"] code {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+html[dir="rtl"] .orders-table-card:hover { transform:translateX(-1px); }
+
+@media (min-width:1024px) {
+  html[dir="rtl"] .manager-page { padding-right:184px; }
+}
+@media (min-width:1280px) {
+  html[dir="rtl"] .manager-page { padding-right:200px; }
+}
+@media (min-width:1536px) {
+  html[dir="rtl"] .manager-page { padding-right:224px; }
+}
+.products-page section.grid > article > div:last-child {
+  padding: 0.8rem;
+}

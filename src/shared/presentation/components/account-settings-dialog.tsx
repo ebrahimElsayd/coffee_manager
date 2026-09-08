@@ -1,0 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useManagerI18n } from "@/shared/i18n/use-manager-i18n";
+import type { ManagerSettings } from "@/shared/presentation/providers/manager-settings-provider";
+
+type Props = { open: boolean; settings: ManagerSettings; onClose: () => void; onSavePhone: (phone: string) => Promise<{ verificationRequired?: boolean } | void> | { verificationRequired?: boolean } | void; onVerifyPhone?: (phone: string, token: string) => Promise<void> | void };
+
+export function AccountSettingsDialog({ open, settings, onClose, onSavePhone, onVerifyPhone }: Props) {
+  const { pick } = useManagerI18n();
+  const [editing, setEditing] = useState(false);
+  const [phone, setPhone] = useState(settings.adminPhone);
+  const [verification, setVerification] = useState(false);
+  const [token, setToken] = useState("");
+  // Reset the editable draft whenever the popup opens.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (open) { setPhone(settings.adminPhone); setEditing(false); setVerification(false); setToken(""); } }, [open, settings.adminPhone]);
+  if (!open) return null;
+  const savePhone = async () => {
+    const next = phone.trim();
+    if (!next) return void window.alert(pick("Please enter a recovery phone number.", "يرجى إدخال رقم هاتف الاسترداد."));
+    if (next !== settings.adminPhone && !window.confirm(pick("Change the recovery phone?", "هل تريد تغيير هاتف الاسترداد؟"))) return;
+    try { const result = await onSavePhone(next); setEditing(false); if (result && "verificationRequired" in result && result.verificationRequired) { setVerification(true); window.alert(pick("A verification code was sent.", "تم إرسال رمز التحقق.")); } else window.alert(pick("Recovery phone updated.", "تم تحديث هاتف الاسترداد.")); }
+    catch (error) { window.alert(error instanceof Error ? error.message : pick("Could not update the phone.", "تعذر تحديث الهاتف.")); }
+  };
+  const verifyPhone = async () => { if (!token.trim()) return; try { await onVerifyPhone?.(phone.trim(), token.trim()); setVerification(false); setToken(""); window.alert(pick("Phone verified successfully.", "تم التحقق من الهاتف بنجاح.")); } catch (error) { window.alert(error instanceof Error ? error.message : pick("Invalid verification code.", "رمز التحقق غير صحيح.")); } };
+  return <div className="account-settings-dialog fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-label={pick("Account settings", "إعدادات الحساب")} onClick={onClose}><section className="w-full max-w-md rounded-2xl border border-[var(--gold)]/50 bg-[#151715] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between border-b border-white/10 pb-4"><div><p className="text-xs uppercase tracking-[.2em] text-[var(--gold)]">{pick("Security", "الأمان")}</p><h2 className="mt-1 font-serif text-2xl">{pick("Account Settings", "إعدادات الحساب")}</h2></div><button type="button" onClick={onClose} className="text-xl text-white/50 hover:text-white" aria-label={pick("Close", "إغلاق")}>×</button></div><div className="mt-5 space-y-4"><label className="block text-sm text-white/70">{pick("Account Email", "بريد الحساب")}<input readOnly value={settings.adminEmail} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/55 outline-none" /><small className="mt-1 block text-xs text-white/35">{pick("Managed by Supabase Authentication", "تتم إدارته عبر مصادقة Supabase")}</small></label><div><label className="block text-sm text-white/70">{pick("Recovery Phone", "هاتف الاسترداد")}</label><div className="mt-2 flex gap-2"><input readOnly={!editing} value={phone} onChange={(event) => setPhone(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#0d0f0e] px-4 py-3 text-sm text-white outline-none focus:border-[var(--gold)] disabled:opacity-60" /><button type="button" onClick={() => { void (editing ? savePhone() : Promise.resolve(setEditing(true))); }} className="shrink-0 rounded-xl border border-[var(--gold)]/60 px-4 text-xs text-[#f5ca72] hover:bg-[var(--gold)]/10">{editing ? pick("Save", "حفظ") : pick("Change", "تغيير")}</button>{editing && <button type="button" onClick={() => { setPhone(settings.adminPhone); setEditing(false); }} className="shrink-0 rounded-xl border border-white/15 px-3 text-xs text-white/55 hover:text-white">{pick("Cancel", "إلغاء")}</button>}</div>{verification && <div className="mt-3 flex gap-2"><input value={token} onChange={(event) => setToken(event.target.value)} inputMode="numeric" placeholder={pick("Verification code", "رمز التحقق")} className="min-w-0 flex-1 rounded-xl border border-[var(--gold)]/50 bg-[#0d0f0e] px-4 py-3 text-sm text-white outline-none focus:border-[var(--gold)]" /><button type="button" onClick={() => { void verifyPhone(); }} className="rounded-xl bg-[var(--gold)] px-4 text-xs font-semibold text-[#17120a]">{pick("Verify", "تحقق")}</button></div>}<small className="mt-1 block text-xs text-white/35">{pick("Used for account recovery", "يُستخدم لاسترداد الحساب")}</small></div><button type="button" onClick={() => window.alert(pick("Password reset will be connected later.", "سيتم ربط إعادة تعيين كلمة المرور لاحقًا."))} className="w-full rounded-xl border border-[var(--gold)]/60 py-3 text-sm text-[#f5ca72] transition hover:bg-[var(--gold)]/10">{pick("Change Password", "تغيير كلمة المرور")}</button></div><button type="button" onClick={onClose} className="mt-5 w-full rounded-xl bg-[#eab454] py-3 text-sm font-semibold text-[#1a1308]">{pick("Close", "إغلاق")}</button></section></div>;
+}

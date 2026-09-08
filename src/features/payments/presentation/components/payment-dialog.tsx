@@ -1,0 +1,44 @@
+"use client";
+
+import { useState } from "react";
+import type { ManagerOrder, OrderType } from "@/shared/application/ports/manager-data-source";
+import { buildPersonBillBreakdown } from "@/features/payments/application/services/build-person-bill-breakdown";
+import { useManagerI18n } from "@/shared/i18n/use-manager-i18n";
+
+type PaymentDialogProps = {
+  open: boolean;
+  reference: string;
+  orderType: OrderType;
+  orders: readonly ManagerOrder[];
+  currency: string;
+  subtotal: number;
+  service: number;
+  tax: number;
+  total: number;
+  onCancel: () => void;
+  onPrintBill: () => void;
+  onConfirm: (receivedAmount: number, printReceipt: boolean) => void | Promise<void>;
+};
+
+export function PaymentDialog({ open, reference, orderType, orders, currency, subtotal, service, tax, total, onCancel, onPrintBill, onConfirm }: PaymentDialogProps) {
+  const { pick } = useManagerI18n();
+  const [received, setReceived] = useState("");
+  const [printAfterPayment, setPrintAfterPayment] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  if (!open) return null;
+  const receivedAmount = Number(received) || 0;
+  const change = Math.max(0, receivedAmount - total);
+  const canConfirm = receivedAmount >= total && total > 0;
+  const personBills = buildPersonBillBreakdown(orders);
+  const handleConfirm = async () => {
+    if (!canConfirm || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirm(receivedAmount, printAfterPayment);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return <div className="fixed inset-0 z-[135] grid place-items-center bg-black/80 p-3 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-labelledby="payment-title"><section className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--gold)]/35 bg-[#111311] shadow-[0_30px_100px_rgba(0,0,0,.75)]"><header className="flex shrink-0 items-start justify-between border-b border-white/10 px-5 py-4"><div><p className="text-xs uppercase tracking-[.2em] text-[var(--gold)]">{orderType === "Takeaway" ? pick("Takeaway cash payment", "تحصيل الطلب السفري نقدًا") : pick("Complete table bill", "تحصيل حساب الطاولة")}</p><h2 id="payment-title" className="mt-1 text-xl font-bold">{pick("Table bill and payment", "حساب الطاولة والتحصيل")}</h2><p className="mt-1 text-xs text-white/45">{reference} · {personBills.length} {pick("people", "أشخاص")}</p></div><button type="button" onClick={onCancel} aria-label={pick("Close payment", "إغلاق نافذة الدفع")} className="grid size-8 place-items-center rounded-lg bg-white/5 text-white/55 hover:bg-white/10">×</button></header><div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,.8fr)]"><section className="min-h-0 border-b border-white/10 p-4 lg:border-b-0 lg:border-e"><div className="mb-3 flex items-center justify-between"><div><h3 className="font-bold">{pick("Bill details per person", "تفاصيل حساب كل شخص")}</h3><p className="mt-1 text-xs text-white/40">{pick("Each person's drinks and total", "كل شخص وتحته مشروباته وإجمالي حسابه")}</p></div><span className="rounded-full bg-[var(--gold)]/10 px-3 py-1 text-xs text-[var(--gold)]">{orders.flatMap((order) => order.drinks).filter((drink) => drink.status !== "Cancelled").reduce((sum, drink) => sum + drink.quantity, 0)} {pick("items", "عناصر")}</span></div><div className="max-h-[56vh] space-y-3 overflow-y-auto pe-1">{personBills.map((person) => <article key={person.name} className="overflow-hidden rounded-xl border border-white/10 bg-black/20"><header className="flex items-center justify-between border-b border-white/[.08] bg-white/[.025] px-4 py-3"><div className="flex items-center gap-2"><span className="grid size-8 place-items-center rounded-full bg-[var(--gold)]/15 text-xs font-bold text-[var(--gold)]">{person.name.slice(0, 1)}</span><span><b className="block text-sm">{person.name}</b><small className="text-[10px] text-white/40">{person.drinks.reduce((sum, drink) => sum + drink.quantity, 0)} {pick("drinks", "مشروبات")}</small></span></div><strong className="text-[var(--gold)]">{person.total.toFixed(2)} <small className="text-[10px]">{currency}</small></strong></header><div className="divide-y divide-white/[.06]">{person.drinks.map((drink) => <div key={drink.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3"><div className="min-w-0"><b className="block truncate text-sm">{drink.name}</b><small className="mt-1 block truncate text-[11px] text-white/42">{[drink.size, drink.milk, drink.sugar, drink.extras, drink.temperature].filter((value) => value && value !== "None").join(" · ") || pick("Standard", "عادي")}</small></div><div className="text-end text-xs"><span className="block text-white/55">{drink.quantity} × {drink.unitPrice.toFixed(2)}</span><b className="mt-1 block">{(drink.quantity * drink.unitPrice).toFixed(2)} {currency}</b></div></div>)}</div><footer className="flex flex-wrap justify-end gap-x-4 gap-y-1 border-t border-dashed border-[var(--gold)]/20 px-4 py-2 text-[10px] text-white/40"><span>{pick("Items", "العناصر")}: {person.subtotal.toFixed(2)}</span></footer></article>)}</div></section><aside className="overflow-y-auto p-5"><div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm"><p className="mb-3 text-xs uppercase tracking-[.16em] text-[var(--gold)]">{pick("Table total", "إجمالي الطاولة")}</p><div className="flex justify-between text-white/55"><span>{pick("Subtotal", "الإجمالي الفرعي")}</span><span>{subtotal.toFixed(2)} {currency}</span></div>{service > 0 && <div className="mt-2 flex justify-between text-white/55"><span>{pick("Service", "الخدمة")}</span><span>{service.toFixed(2)} {currency}</span></div>}{tax > 0 && <div className="mt-2 flex justify-between text-white/55"><span>{pick("Tax", "الضريبة")}</span><span>{tax.toFixed(2)} {currency}</span></div>}<div className="mt-4 flex items-end justify-between border-t border-dashed border-[var(--gold)]/30 pt-4"><strong>{pick("Grand Total", "الإجمالي النهائي")}</strong><strong className="text-2xl text-[var(--gold)]">{total.toFixed(2)} <small className="text-sm">{currency}</small></strong></div></div><button type="button" onClick={onPrintBill} className="mt-3 w-full rounded-xl border border-[var(--gold)]/45 bg-[var(--gold)]/[.06] py-2.5 text-sm font-semibold text-[#ffd477] transition hover:bg-[var(--gold)]/[.12]">▣ {pick("Print bill before payment", "طباعة الحساب قبل الدفع")} <small className="ms-1 text-[10px] font-normal text-white/35">{pick("Optional", "اختياري")}</small></button><div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--gold)]/25 bg-[var(--gold)]/[.06] px-4 py-3"><span><small className="block text-[10px] uppercase tracking-[.15em] text-white/40">{pick("Payment method", "طريقة الدفع")}</small><b className="mt-1 block text-[#ffd477]">▱ {pick("Cash", "نقدي")}</b></span><span className="text-xs text-white/35">{pick("Cash only", "نقدي فقط")}</span></div><label className="mt-4 block text-sm text-white/65">{pick("Amount received from customer", "المبلغ المستلم من العميل")}<input autoFocus inputMode="decimal" type="number" min={total} step="0.01" value={received} onChange={(event) => setReceived(event.target.value)} placeholder={total.toFixed(2)} className="mt-2 w-full rounded-xl border border-white/15 bg-black/25 px-4 py-3 text-lg font-bold text-white outline-none placeholder:text-white/20 focus:border-[var(--gold)]/60" /></label><div className={`mt-3 flex items-center justify-between rounded-xl px-4 py-3 text-sm ${canConfirm ? "bg-emerald-400/10 text-emerald-300" : "bg-white/[.035] text-white/40"}`}><span>{pick("Change", "الباقي للعميل")}</span><strong>{change.toFixed(2)} {currency}</strong></div><label className="mt-4 flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[.025] px-4 py-3 text-sm text-white/65"><span><b className="block">{pick("Print receipt after payment", "طباعة الإيصال بعد الدفع")}</b><small className="mt-1 block text-[10px] text-white/35">{pick("Optional · disabled by default", "اختياري · غير مفعّل افتراضيًا")}</small></span><input type="checkbox" checked={printAfterPayment} onChange={(event) => setPrintAfterPayment(event.target.checked)} className="size-4 accent-[#e5aa3a]" /></label><button type="button" disabled={!canConfirm || isSubmitting} onClick={() => void handleConfirm()} className="mt-5 w-full rounded-xl bg-[#e5aa3a] py-3.5 text-sm font-extrabold text-[#17120a] transition hover:bg-[#f0b53c] disabled:cursor-not-allowed disabled:opacity-35">{isSubmitting ? pick("Confirming payment…", "جاري تأكيد الدفع…") : pick("Confirm payment", "تأكيد الدفع")}</button><p className="mt-2 text-center text-[11px] text-white/35">{pick("Payment will be recorded and printing follows your choice.", "سيتم تسجيل الدفع، والطباعة حسب اختيارك.")}</p></aside></div></section></div>;
+}
