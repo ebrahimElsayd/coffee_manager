@@ -129,10 +129,14 @@ export function useTableServiceRequestsListener() {
     const db = getSupabaseBrowserClient();
     const cafeId = cafeIdRef.current;
     if (!db || !cafeId) throw new Error("Supabase is not configured");
-    const result = await db.from("service_requests").update({ status: "acknowledged" }).eq("id", requestId).eq("cafe_id", cafeId).eq("status", "open");
-    if (result.error) throw result.error;
+    const previous = pendingRequests;
     setPendingRequests((current) => current.filter((request) => request.id !== requestId));
-  }, []);
+    const result = await db.from("service_requests").update({ status: "acknowledged" }).eq("id", requestId).eq("cafe_id", cafeId).eq("status", "open");
+    if (result.error) {
+      setPendingRequests(previous);
+      throw result.error;
+    }
+  }, [pendingRequests]);
 
   return { pendingRequests, lastLiveRequestId, acknowledgeRequest };
 }
