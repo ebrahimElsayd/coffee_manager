@@ -43,8 +43,9 @@ function OrdersPage() {
   const { orders, setOrders, isLoading, error, beginMutation, settleMutation } = useManagerOrders(managerDataSource);
   const { pushInfo, syncNewOrderCount } = useManagerNotifications();
   const requestedStatus = searchParams.get("status");
+  const requestedTable = searchParams.get("table");
   const initialFilter = requestedStatus && ["New", "Preparing", "Ready", "Delivered", "Cancelled"].includes(requestedStatus) ? requestedStatus as OrderStatus : "All";
-  const [selectedTable, setSelectedTable] = useState("12");
+  const [selectedTable, setSelectedTable] = useState(() => requestedTable || "12");
   const [acknowledgedNewOrders, setAcknowledgedNewOrders] = useState<Set<string>>(() => new Set());
   const [filter, setFilter] = useState<OrderStatus | "All">(initialFilter);
   const [search, setSearch] = useState("");
@@ -228,6 +229,11 @@ function OrdersPage() {
   );
 }
 
+function OrdersPageRouteContent() {
+  const searchParams = useSearchParams();
+  return <OrdersPage key={searchParams.toString()} />;
+}
+
 export default function OrdersPageRoute() {
-  return <Suspense fallback={<main className="min-h-screen bg-[#080a09]" />}><OrdersPage /></Suspense>;
+  return <Suspense fallback={<main className="min-h-screen bg-[#080a09]" />}><OrdersPageRouteContent /></Suspense>;
 }
