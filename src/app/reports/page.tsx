@@ -12,16 +12,17 @@ export default function ReportsPage() {
   const [range, setRange] = useState<ReportRange>("Last 7 days");
   const [report, setReport] = useState<ReportSnapshot>(emptyReport);
   const [recentOrders, setRecentOrders] = useState<ReportOrder[]>([]);
+  const [recentOrderLimit, setRecentOrderLimit] = useState(10);
   useEffect(() => {
     let active = true;
-    const refresh = () => { void Promise.all([getReportsSnapshot(range), getRecentPaidOrders(range)]).then(([value, orders]) => { if (active) { setReport(value); setRecentOrders(orders); } }).catch(() => { if (active) { setReport(emptyReport); setRecentOrders([]); } }); };
+    const refresh = () => { void Promise.all([getReportsSnapshot(range), getRecentPaidOrders(range, recentOrderLimit)]).then(([value, orders]) => { if (active) { setReport(value); setRecentOrders(orders); } }).catch(() => { if (active) { setReport(emptyReport); setRecentOrders([]); } }); };
     refresh();
     const unsubscribe = subscribeToPaidPayments(refresh);
     const wake = () => { if (document.visibilityState === "visible") refresh(); };
     window.addEventListener("online", refresh);
     document.addEventListener("visibilitychange", wake);
     return () => { active = false; unsubscribe(); window.removeEventListener("online", refresh); document.removeEventListener("visibilitychange", wake); };
-  }, [range]);
+  }, [range, recentOrderLimit]);
   const products = report.products;
   const totalSales = report.totalSales;
   const totalOrderCount = report.orderCount;
@@ -51,7 +52,7 @@ export default function ReportsPage() {
         <article className="rounded-2xl border border-white/15 bg-[#111312] p-5 sm:p-6"><div className="flex items-start justify-between"><div><h2 className="font-serif text-xl">{pick("Popular Products", "المنتجات الأكثر مبيعًا")}</h2><p className="mt-1 text-xs text-white/40">{pick("Ranked by sold quantity", "مرتبة حسب الكمية المباعة")}</p></div><span className="text-xs text-[var(--gold)]">{pick("View all", "عرض الكل")} ›</span></div><div className="mt-5 space-y-4">{products.slice(0, 5).map((product, index) => <div key={product.name} className="flex items-center gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--gold)]/[.1] text-sm text-[#f5ca72]">{index + 1}</span><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><b className="truncate text-xs">{product.name}</b><span className="shrink-0 text-xs text-white/60">{product.sold}</span></div><p className="mt-1 text-[10px] text-white/40">{product.arabic}</p><div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10"><span className="block h-full rounded-full bg-[var(--gold)]" style={{ width: `${Math.max(18, (product.sold / maxProductSold) * 100)}%` }} /></div></div></div>)}</div></article>
       </section>
       <section className="mt-5 rounded-2xl border border-white/15 bg-[#111312] p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-3"><div><h2 className="font-serif text-xl">{pick("Recent paid orders", "أحدث الطلبات المدفوعة")}</h2><p className="mt-1 text-xs text-white/40">{pick("Last 10 orders in the selected period", "آخر 10 طلبات خلال الفترة المحددة")}</p></div><span className="text-xs text-white/40">{recentOrders.length}/10</span></div>
+        <div className="flex items-start justify-between gap-3"><div><h2 className="font-serif text-xl">{pick("Recent paid orders", "أحدث الطلبات المدفوعة")}</h2><p className="mt-1 text-xs text-white/40">{pick(`Last ${recentOrderLimit} orders in the selected period`, `آخر ${recentOrderLimit} طلبات خلال الفترة المحددة`)}</p></div><div className="flex items-center gap-3">{recentOrderLimit === 10 && <button type="button" onClick={() => setRecentOrderLimit(20)} className="text-xs text-[var(--gold)] transition hover:text-[#f5ca72]">{pick("More", "المزيد")} ›</button>}<span className="text-xs text-white/40">{recentOrders.length}/{recentOrderLimit}</span></div></div>
         <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead className="text-xs text-white/45"><tr><th className="pb-3 font-medium">{pick("Order", "الطلب")}</th><th className="pb-3 font-medium">{pick("Table", "الطاولة")}</th><th className="pb-3 font-medium">{pick("Total", "الإجمالي")}</th><th className="pb-3 font-medium">{pick("Payment", "الدفع")}</th><th className="pb-3 text-right font-medium">{pick("Time", "الوقت")}</th></tr></thead><tbody>{recentOrders.map((order) => <tr key={`${order.orderNumber}-${order.paidAt}`} className="border-t border-white/[.08] text-white/80"><td className="py-3 font-medium text-[#f5ca72]">#{order.orderNumber}</td><td className="py-3">{order.tableNumber == null ? "—" : order.tableNumber}</td><td className="py-3">{order.total.toLocaleString()} EGP</td><td className="py-3 capitalize">{order.method}</td><td className="py-3 text-right text-white/50">{order.paidAt ? new Date(order.paidAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td></tr>)}</tbody></table>{recentOrders.length === 0 && <p className="py-6 text-center text-xs text-white/35">{pick("No paid orders in this period", "لا توجد طلبات مدفوعة خلال هذه الفترة")}</p>}</div>
       </section>
       <p className="mt-5 text-center text-xs text-white/30">{pick("Reports are calculated from paid orders for the selected period.", "تُحسب التقارير من الطلبات المدفوعة خلال الفترة المحددة.")}</p>
