@@ -27,6 +27,17 @@ test("bill totals exclude cancelled items and apply service before tax", () => {
   }), { subtotal: 110, service: 11, tax: 16.94, total: 137.94 });
 });
 
+test("empty or fully cancelled tables never retain fixed charges", () => {
+  const fixedCharges = {
+    serviceEnabled: true, serviceType: "fixed" as const, serviceValue: 20,
+    taxEnabled: true, taxType: "fixed" as const, taxValue: 14,
+  };
+  assert.deepEqual(calculateBillTotals([], fixedCharges), { subtotal: 0, service: 0, tax: 0, total: 0 });
+  assert.deepEqual(calculateBillTotals([{ ...orders[0], drinks: [orders[0].drinks[2]] }], fixedCharges), {
+    subtotal: 0, service: 0, tax: 0, total: 0,
+  });
+});
+
 test("person breakdown groups each customer with their own active drinks", () => {
   const people = buildPersonBillBreakdown(orders);
   assert.deepEqual(people.map(({ name, total }) => ({ name, total })), [

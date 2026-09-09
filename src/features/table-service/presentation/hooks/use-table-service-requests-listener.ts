@@ -84,15 +84,22 @@ export function useTableServiceRequestsListener() {
         if (disposed) return;
         const db = getSupabaseBrowserClient();
         if (!db) return;
+        const handleRealtimeRequest = (payload: { new: unknown }) => {
+          const requestId = (payload.new as { id?: unknown }).id;
+          if (typeof requestId !== "string") return;
+          setLastLiveRequestId(requestId);
+          void loadOne(cafeId, requestId).then((request) => {
+            if (disposed) return;
+            setPendingRequests((current) => {
+              if (!request) return current.filter((item) => item.id !== requestId);
+              const existing = current.some((item) => item.id === request.id);
+              return existing ? current.map((item) => item.id === request.id ? request : item) : [...current, request];
+            });
+          }).catch(scheduleReconnect);
+        };
         channel = db.channel(`table-service-requests:${cafeId}`)
-          .on("postgres_changes", { event: "INSERT", schema: "public", table: "service_requests", filter: `cafe_id=eq.${cafeId}` }, (payload) => {
-            const requestId = (payload.new as { id?: unknown }).id;
-            if (typeof requestId === "string") setLastLiveRequestId(requestId);
-            if (typeof requestId === "string") void loadOne(cafeId, requestId).then((request) => {
-              if (!request || disposed) return;
-              setPendingRequests((current) => current.some((item) => item.id === request.id) ? current : [...current, request]);
-            }).catch(scheduleReconnect);
-          })
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "service_requests", filter: `cafe_id=eq.${cafeId}` }, handleRealtimeRequest)
+          .on("postgres_changes", { event: "UPDATE", schema: "public", table: "service_requests", filter: `cafe_id=eq.${cafeId}` }, handleRealtimeRequest)
           .subscribe((status) => {
             if (status === "SUBSCRIBED") { retryAttempt = 0; return; }
             if (status !== "CHANNEL_ERROR" && status !== "TIMED_OUT" && status !== "CLOSED") return;
@@ -129,10 +136,14 @@ export function useTableServiceRequestsListener() {
     const db = getSupabaseBrowserClient();
     const cafeId = cafeIdRef.current;
     if (!db || !cafeId) throw new Error("Supabase is not configured");
-    const result = await db.from("service_requests").update({ status: "acknowledged" }).eq("id", requestId).eq("cafe_id", cafeId).eq("status", "open");
-    if (result.error) throw result.error;
+    const previous = pendingRequests;
     setPendingRequests((current) => current.filter((request) => request.id !== requestId));
-  }, []);
+    const result = await db.from("service_requests").update({ status: "acknowledged" }).eq("id", requestId).eq("cafe_id", cafeId).eq("status", "open");
+    if (result.error) {
+      setPendingRequests(previous);
+      throw result.error;
+    }
+  }, [pendingRequests]);
 
   return { pendingRequests, lastLiveRequestId, acknowledgeRequest };
 }

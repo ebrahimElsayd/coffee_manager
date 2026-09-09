@@ -18,6 +18,7 @@ const statusLabels: Record<string, readonly [string, string]> = {
   cancelled: ["Cancelled", "ملغي"],
   available: ["Available", "متاحة"],
   occupied: ["Occupied", "مشغولة"],
+  seated: ["Seated", "يوجد عملاء"],
   paid: ["Paid", "مدفوع"],
   unpaid: ["Unpaid", "غير مدفوع"],
   pending: ["Pending", "قيد الانتظار"],

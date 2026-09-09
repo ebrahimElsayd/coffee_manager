@@ -10,6 +10,13 @@ export type ReportSnapshot = {
   products: ReportProduct[];
   chart: { label: string; date: string; amount: number }[];
 };
+export type ReportOrder = {
+  orderNumber: number;
+  tableNumber: number | null;
+  total: number;
+  paidAt: string;
+  method: string;
+};
 
 
 function startOfLocalDay(value: Date): Date {
@@ -70,6 +77,34 @@ export async function getReportsSnapshot(range: ReportRange): Promise<ReportSnap
     return { totalSales, orderCount, averageOrder: orderCount ? totalSales / orderCount : 0, products, chart };
   }
   throw aggregated.error ?? new Error("Report aggregation RPC is unavailable");
+}
+
+export async function getRecentPaidOrders(range: ReportRange, limit = 10): Promise<ReportOrder[]> {
+  const db = getSupabaseBrowserClient();
+  if (!db) throw new Error("Supabase unavailable");
+  const { start, end } = getReportPeriod(range);
+  const { data, error } = await db.from("payments")
+    .select("grand_total,amount,method,paid_at,orders!inner(order_number,status,payment_status,table_sessions!inner(cafe_tables!inner(table_number)))")
+    .eq("status", "paid")
+    .gte("paid_at", start.toISOString())
+    .lt("paid_at", end.toISOString())
+    .order("paid_at", { ascending: false })
+    .limit(Math.max(1, Math.min(limit, 50)));
+  if (error) throw error;
+  return ((data ?? []) as unknown[]).flatMap((entry) => {
+    const row = entry as { grand_total?: unknown; amount?: unknown; method?: unknown; paid_at?: unknown; orders?: unknown };
+    const order = Array.isArray(row.orders) ? row.orders[0] : row.orders as { order_number?: unknown; status?: unknown; payment_status?: unknown; table_sessions?: unknown } | undefined;
+    if (!order || order.status === "cancelled" || order.payment_status !== "paid") return [];
+    const session = Array.isArray(order.table_sessions) ? order.table_sessions[0] : order.table_sessions as { cafe_tables?: unknown } | undefined;
+    const table = session && (Array.isArray(session.cafe_tables) ? session.cafe_tables[0] : session.cafe_tables as { table_number?: unknown } | undefined);
+    return [{
+      orderNumber: Number(order.order_number ?? 0),
+      tableNumber: table?.table_number == null ? null : Number(table.table_number),
+      total: Number(row.grand_total ?? row.amount ?? 0),
+      paidAt: String(row.paid_at ?? ""),
+      method: String(row.method ?? "—"),
+    }];
+  });
 }
 
 export function subscribeToPaidPayments(onChange: () => void): () => void {

@@ -12,6 +12,7 @@ export type ChargeSettings = {
 export function calculateBillTotals(orders: readonly ManagerOrder[], settings: ChargeSettings) {
   const round = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
   const subtotal = round(orders.flatMap((order) => order.drinks).filter((drink) => drink.status !== "Cancelled").reduce((sum, drink) => sum + drink.quantity * drink.unitPrice, 0));
+  if (subtotal <= 0) return { subtotal: 0, service: 0, tax: 0, total: 0 };
   const service = round(settings.serviceEnabled ? settings.serviceType === "percent" ? subtotal * settings.serviceValue / 100 : settings.serviceValue : 0);
   const taxableAmount = subtotal + service;
   const tax = round(settings.taxEnabled ? settings.taxType === "percent" ? taxableAmount * settings.taxValue / 100 : settings.taxValue : 0);
