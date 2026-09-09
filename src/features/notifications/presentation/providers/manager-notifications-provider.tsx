@@ -253,7 +253,7 @@ export function ManagerNotificationsProvider({ children }: { children: React.Rea
           <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => { const request = activeServiceRequest; router.push(`/orders?table=${encodeURIComponent(request.table)}`); void acknowledgeRequest(request.id); }} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-white/75 transition hover:bg-white/10">{pick("Open table", "فتح الطاولة")}</button><button type="button" onClick={() => { void acknowledgeRequest(activeServiceRequest.id); }} className="rounded-lg bg-[var(--gold)] px-3 py-2 text-xs font-semibold text-[#17120a] transition hover:brightness-110">{pick("Close", "إغلاق")}</button></div>
         </article>
       </section>}
-      <section className={`manager-notification-stack pointer-events-none fixed right-4 ${activeServiceRequest ? "top-28" : "top-4"} z-[120] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2`} aria-live="polite" aria-label="Operational notifications">
+      <section className={`manager-notification-stack pointer-events-none fixed right-4 ${activeServiceRequest ? "top-28" : "top-4"} z-[120] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2`} aria-live="polite" aria-label={pick("Operational notifications", "الإشعارات التشغيلية")}>
         {notifications.map((notification) => {
           const tone = notificationTone[notification.kind];
           return (
