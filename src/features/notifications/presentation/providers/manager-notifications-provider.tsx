@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useManagerSettings } from "@/shared/presentation/providers/manager-settings-provider";
 import { getSupabaseBrowserClient } from "@/shared/infrastructure/supabase/supabase-browser";
 import { getManagerCafeId } from "@/shared/infrastructure/supabase/supabase-cafe-settings";
@@ -35,11 +36,12 @@ const notificationTone: Record<NotificationKind, { icon: string; border: string;
 };
 
 export function ManagerNotificationsProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const { settings } = useManagerSettings();
   const [notifications, setNotifications] = useState<ManagerNotification[]>([]);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const timers = useRef(new Map<string, number>());
-  const { pendingRequests, lastLiveRequestId } = useTableServiceRequestsListener();
+  const { pendingRequests, lastLiveRequestId, acknowledgeRequest } = useTableServiceRequestsListener();
 
   useEffect(() => {
     let mounted = true;
@@ -209,11 +211,15 @@ export function ManagerNotificationsProvider({ children }: { children: React.Rea
     const request = pendingRequests.find((item) => item.id === lastLiveRequestId);
     if (!request) return;
     serviceSeen.current.add(lastLiveRequestId);
-    const timer = window.setTimeout(() => {
-      push("info", "Table service request", `Table ${request.table} · ${request.type}`);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [lastLiveRequestId, pendingRequests, push]);
+    playSound();
+  }, [lastLiveRequestId, pendingRequests, playSound]);
+
+  const activeServiceRequest = pendingRequests[0];
+  const serviceRequestLabel = activeServiceRequest?.type === "bill"
+    ? "requested the bill"
+    : activeServiceRequest?.type === "waiter"
+      ? "requested a waiter"
+      : `sent a ${activeServiceRequest?.type ?? "service"} request`;
 
   const syncNewOrderCount = useCallback((count: number) => setNewOrderCount(Math.max(0, count)), []);
 
@@ -235,7 +241,17 @@ export function ManagerNotificationsProvider({ children }: { children: React.Rea
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      <section className="manager-notification-stack pointer-events-none fixed right-4 top-4 z-[120] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2" aria-live="polite" aria-label="Operational notifications">
+      {activeServiceRequest && <section className="pointer-events-none fixed inset-x-4 top-4 z-[125] flex justify-center" aria-live="assertive" aria-label="Pending table service request">
+        <article className="pointer-events-auto w-full max-w-xl rounded-2xl border border-[var(--gold)]/70 bg-[#21190b]/[.98] p-4 shadow-[0_22px_70px_rgba(0,0,0,.6)] backdrop-blur-xl sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--gold)]/60 bg-[var(--gold)]/[.12] text-xl text-[#ffd477]" aria-hidden="true">♧</span>
+            <div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-[.16em] text-[#f5ca72]">Table service request</p><strong className="mt-1 block text-lg text-white">Table {activeServiceRequest.table} {serviceRequestLabel}</strong><p className="mt-1 text-sm text-white/60">{activeServiceRequest.note || "Open the table to review and handle this request."}</p></div>
+            <span className="mt-1 size-2.5 shrink-0 animate-pulse rounded-full bg-[#f5ca72]" aria-hidden="true" />
+          </div>
+          <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => router.push(`/orders?table=${encodeURIComponent(activeServiceRequest.table)}`)} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-white/75 transition hover:bg-white/10">Open table</button><button type="button" onClick={() => { void acknowledgeRequest(activeServiceRequest.id); }} className="rounded-lg bg-[var(--gold)] px-3 py-2 text-xs font-semibold text-[#17120a] transition hover:brightness-110">Acknowledge</button></div>
+        </article>
+      </section>}
+      <section className={`manager-notification-stack pointer-events-none fixed right-4 ${activeServiceRequest ? "top-28" : "top-4"} z-[120] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2`} aria-live="polite" aria-label="Operational notifications">
         {notifications.map((notification) => {
           const tone = notificationTone[notification.kind];
           return (
