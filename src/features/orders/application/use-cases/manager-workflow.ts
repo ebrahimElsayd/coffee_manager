@@ -33,7 +33,7 @@ export class ManagerWorkflow {
     return this.source.updateTablePayment(table, "Paid", method, receivedAmount, changeAmount, sessionId);
   }
 
-  closeTableSession(table: string) {
-    return this.source.updateTableSession(table, "Closed");
+  closeTableSession(table: string, sessionId?: string) {
+    return this.source.updateTableSession(table, "Closed", sessionId);
   }
 }

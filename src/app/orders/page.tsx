@@ -185,7 +185,7 @@ function OrdersPage() {
     }
     const sessionIds = new Set(tableSession.map((order) => order.id));
     const previousOrders = orders;
-    void managerWorkflow.closeTableSession(selectedOrder.table).catch(() => {
+    void managerWorkflow.closeTableSession(selectedOrder.table, selectedOrder.sessionId).catch(() => {
       setOrders(previousOrders);
       pushInfo(pick(`Unable to close table ${selectedOrder.table}. Please try again.`, `تعذر إغلاق الطاولة ${selectedOrder.table}. حاول مرة أخرى.`));
     });

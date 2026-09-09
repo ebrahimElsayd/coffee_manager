@@ -1,6 +1,6 @@
 export type DrinkWorkflowStatus = "New" | "Preparing" | "Ready" | "Delivered" | "Cancelled";
 export type WorkflowStatus = DrinkWorkflowStatus | "Delivered";
-export type TableStatus = DrinkWorkflowStatus | "Delivered" | "Available" | "Done";
+export type TableStatus = DrinkWorkflowStatus | "Delivered" | "Available" | "Seated" | "Done";
 export type OrderType = "DineIn" | "Takeaway";
 export type PaymentStatus = "Unpaid" | "Paid" | "Refunded";
 export type PaymentMethod = "Cash" | "Card" | "Wallet";
@@ -75,6 +75,7 @@ export interface ManagerTable {
   number: string;
   guests: string;
   status: TableStatus;
+  sessionId?: string;
   sessionStatus?: TableSessionStatus;
   openedAt?: string;
 }
@@ -90,7 +91,7 @@ export interface OrderRepository {
 
 export interface TableRepository {
   listTables(): Promise<readonly ManagerTable[]>;
-  updateTableSession(table: string, status: TableSessionStatus): Promise<void>;
+  updateTableSession(table: string, status: TableSessionStatus, sessionId?: string): Promise<void>;
 }
 
 export interface PaymentRepository {
