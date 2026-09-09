@@ -8,6 +8,7 @@ import { getManagerCafeId } from "@/shared/infrastructure/supabase/supabase-cafe
 import { useTableServiceRequestsListener } from "@/features/table-service/presentation/hooks/use-table-service-requests-listener";
 import { generateSafeUUID } from "@/shared/utils/uuid";
 import { MANAGER_ORDER_INVALIDATED_EVENT } from "@/features/orders/domain/order-realtime-events";
+import { useManagerI18n } from "@/shared/i18n/use-manager-i18n";
 
 type NotificationKind = "new-order" | "order-ready" | "info";
 
@@ -38,6 +39,7 @@ const notificationTone: Record<NotificationKind, { icon: string; border: string;
 export function ManagerNotificationsProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { settings } = useManagerSettings();
+  const { pick } = useManagerI18n();
   const [notifications, setNotifications] = useState<ManagerNotification[]>([]);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const timers = useRef(new Map<string, number>());
@@ -216,10 +218,10 @@ export function ManagerNotificationsProvider({ children }: { children: React.Rea
 
   const activeServiceRequest = pendingRequests[0];
   const serviceRequestLabel = activeServiceRequest?.type === "bill"
-    ? "requested the bill"
+    ? pick("requested the bill", "طلب الحساب")
     : activeServiceRequest?.type === "waiter"
-      ? "requested a waiter"
-      : `sent a ${activeServiceRequest?.type ?? "service"} request`;
+      ? pick("requested a waiter", "طلب النادل")
+      : pick(`sent a ${activeServiceRequest?.type ?? "service"} request`, `أرسل طلب ${activeServiceRequest?.type ?? "خدمة"}`);
 
   const syncNewOrderCount = useCallback((count: number) => setNewOrderCount(Math.max(0, count)), []);
 
@@ -241,14 +243,14 @@ export function ManagerNotificationsProvider({ children }: { children: React.Rea
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      {activeServiceRequest && <section className="pointer-events-none fixed inset-x-4 top-4 z-[125] flex justify-center" aria-live="assertive" aria-label="Pending table service request">
+      {activeServiceRequest && <section className="pointer-events-none fixed inset-x-4 top-4 z-[125] flex justify-center" aria-live="assertive" aria-label={pick("Pending table service request", "طلب خدمة طاولة معلّق")}>
         <article className="pointer-events-auto w-full max-w-xl rounded-2xl border border-[var(--gold)]/70 bg-[#21190b]/[.98] p-4 shadow-[0_22px_70px_rgba(0,0,0,.6)] backdrop-blur-xl sm:p-5">
           <div className="flex items-start gap-3">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--gold)]/60 bg-[var(--gold)]/[.12] text-xl text-[#ffd477]" aria-hidden="true">♧</span>
-            <div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-[.16em] text-[#f5ca72]">Table service request</p><strong className="mt-1 block text-lg text-white">Table {activeServiceRequest.table} {serviceRequestLabel}</strong><p className="mt-1 text-sm text-white/60">{activeServiceRequest.note || "Open the table to review and handle this request."}</p></div>
+            <div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-[.16em] text-[#f5ca72]">{pick("Table service request", "طلب خدمة للطاولة")}</p><strong className="mt-1 block text-lg text-white">{pick("Table", "طاولة")} {activeServiceRequest.table} {serviceRequestLabel}</strong><p className="mt-1 text-sm text-white/60">{activeServiceRequest.note || pick("Open the table to review and handle this request.", "افتح الطاولة لمراجعة هذا الطلب والتعامل معه.")}</p></div>
             <span className="mt-1 size-2.5 shrink-0 animate-pulse rounded-full bg-[#f5ca72]" aria-hidden="true" />
           </div>
-          <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => { const request = activeServiceRequest; router.push(`/orders?table=${encodeURIComponent(request.table)}`); void acknowledgeRequest(request.id); }} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-white/75 transition hover:bg-white/10">Open table</button><button type="button" onClick={() => { void acknowledgeRequest(activeServiceRequest.id); }} className="rounded-lg bg-[var(--gold)] px-3 py-2 text-xs font-semibold text-[#17120a] transition hover:brightness-110">Close</button></div>
+          <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => { const request = activeServiceRequest; router.push(`/orders?table=${encodeURIComponent(request.table)}`); void acknowledgeRequest(request.id); }} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-white/75 transition hover:bg-white/10">{pick("Open table", "فتح الطاولة")}</button><button type="button" onClick={() => { void acknowledgeRequest(activeServiceRequest.id); }} className="rounded-lg bg-[var(--gold)] px-3 py-2 text-xs font-semibold text-[#17120a] transition hover:brightness-110">{pick("Close", "إغلاق")}</button></div>
         </article>
       </section>}
       <section className={`manager-notification-stack pointer-events-none fixed right-4 ${activeServiceRequest ? "top-28" : "top-4"} z-[120] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2`} aria-live="polite" aria-label="Operational notifications">
