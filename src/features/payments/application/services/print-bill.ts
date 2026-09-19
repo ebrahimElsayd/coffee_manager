@@ -24,7 +24,12 @@ export function printBill(table: string, orders: ManagerOrder[], branding: BillB
   const currency = escapeHtml(branding.currency?.split(" ")[0] || "EGP");
   const branch = escapeHtml(branding.branchName || "");
   const contact = escapeHtml([branding.phone, branding.address].filter(Boolean).join(" · "));
-  const footer = escapeHtml(branding.footer?.trim() || branding.receipt?.footer?.trim() || "Thank you for choosing us");
+  const configuredFooter = branding.footer?.trim() || branding.receipt?.footer?.trim() || "";
+  const isLegacyDefaultFooter = /^(thank you for choosing (king[’']s cafe|us))$/i.test(configuredFooter);
+  const footerText = branding.locale === "ar" && (!configuredFooter || isLegacyDefaultFooter)
+    ? "شكرًا لاختيارك كافيهنا"
+    : configuredFooter || "Thank you for choosing us";
+  const footer = escapeHtml(footerText);
   const paidReceiptNote = branding.locale === "ar" ? "يرجى الاحتفاظ بهذا الإيصال لسجلاتك" : "Please keep this receipt for your records";
   const unpaidBillNote = branding.locale === "ar" ? "هذه الفاتورة ليست إثباتًا للدفع" : "This bill is not proof of payment";
   const labels = branding.locale === "ar" ? {
