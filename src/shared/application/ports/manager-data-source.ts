@@ -6,6 +6,20 @@ export type PaymentStatus = "Unpaid" | "Paid" | "Refunded";
 export type PaymentMethod = "Cash" | "Card" | "Wallet";
 export type TableSessionStatus = "Open" | "Closed";
 
+export type PaymentReceipt = {
+  paymentId: string;
+  sessionId: string;
+  receiptNumber: number;
+  receiptIssuedAt: string;
+  subtotal: number;
+  serviceAmount: number;
+  taxAmount: number;
+  grandTotal: number;
+  receivedAmount?: number;
+  changeAmount: number;
+  reused: boolean;
+};
+
 export type ProductCustomization = {
   id: string;
   name: string;
@@ -65,6 +79,8 @@ export interface ManagerOrder {
   paymentMethod?: PaymentMethod;
   cashReceived?: number;
   cashChange?: number;
+  receiptNumber?: number;
+  receiptIssuedAt?: string;
   sessionStatus: TableSessionStatus;
   cashierId?: string;
   closedAt?: string;
@@ -95,7 +111,7 @@ export interface TableRepository {
 }
 
 export interface PaymentRepository {
-  updateTablePayment(table: string, status: PaymentStatus, method: PaymentMethod, receivedAmount?: number, changeAmount?: number, sessionId?: string): Promise<void>;
+  updateTablePayment(table: string, status: PaymentStatus, method: PaymentMethod, receivedAmount?: number, changeAmount?: number, sessionId?: string): Promise<PaymentReceipt | undefined>;
 }
 
 /** Backward-compatible aggregate boundary for current screens. */

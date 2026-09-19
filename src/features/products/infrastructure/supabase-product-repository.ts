@@ -8,18 +8,67 @@ type GroupRow = { id: string; name: string; name_ar: string; is_required: boolea
 type LinkRow = { product_id: string; group_id: string; sort_order: number; modifier_groups: GroupRow | null };
 type ProductRow = { id: string; slug: string; name: string; name_ar: string; category_id: string | null; base_price: number; cost_price: number | null; image_url: string | null; availability: string; available_for_takeaway: boolean; description: string | null; menu_categories: { name: string; name_ar: string } | null };
 
+const PRODUCT_IMAGE_MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+const PRODUCT_IMAGE_MAX_OUTPUT_BYTES = 500 * 1024;
+const PRODUCT_IMAGE_MAX_SIDE = 1600;
+const PRODUCT_IMAGE_MIN_SIDE = 640;
+
 function slugify(value: string) { return value.trim().toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/g, "-").replace(/^-|-$/g, "") || `item-${generateSafeUUID()}`; }
 
 async function persistProductImage(db: ReturnType<typeof getSupabaseBrowserClient>, image: string, productId: string, cafeId: string): Promise<string | null> {
   if (!image) return null;
   if (!image.startsWith("data:image/")) return image;
-  const response = await fetch(image);
-  const blob = await response.blob();
+  const blob = await optimizeProductImage(image);
   const extension = blob.type.split("/")[1] || "webp";
   const path = `${cafeId}/${productId}/${generateSafeUUID()}.${extension}`;
   const upload = await db!.storage.from("product-images").upload(path, blob, { contentType: blob.type, cacheControl: "31536000", upsert: false });
   if (upload.error) throw upload.error;
   return db!.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+}
+
+async function optimizeProductImage(dataUrl: string): Promise<Blob> {
+  const original = await (await fetch(dataUrl)).blob();
+  if (!original.type.startsWith("image/")) throw new Error("The selected file is not a valid image.");
+  if (original.size > PRODUCT_IMAGE_MAX_SOURCE_BYTES) throw new Error("Image is too large. Choose an image smaller than 20 MB.");
+  if (typeof createImageBitmap !== "function") {
+    if (original.size <= PRODUCT_IMAGE_MAX_OUTPUT_BYTES) return original;
+    throw new Error("This browser cannot safely compress the selected image.");
+  }
+  const bitmap = await createImageBitmap(original);
+  try {
+    let scale = Math.min(1, PRODUCT_IMAGE_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Unable to prepare the product image.");
+
+    for (let resizeAttempt = 0; resizeAttempt < 7; resizeAttempt += 1) {
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      for (const quality of [0.82, 0.74, 0.66, 0.58, 0.5, 0.44]) {
+        const compressed = await canvasToWebp(canvas, quality);
+        if (compressed.size <= PRODUCT_IMAGE_MAX_OUTPUT_BYTES) return compressed;
+      }
+
+      const currentLongSide = Math.max(canvas.width, canvas.height);
+      if (currentLongSide <= PRODUCT_IMAGE_MIN_SIDE) break;
+      scale *= Math.max(PRODUCT_IMAGE_MIN_SIDE / currentLongSide, 0.82);
+    }
+    throw new Error("Image could not be reduced below 500 KB. Choose a simpler or smaller image.");
+  } finally {
+    bitmap.close();
+  }
+}
+
+function canvasToWebp(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Unable to encode the product image."));
+    }, "image/webp", quality);
+  });
 }
 
 export class SupabaseProductRepository implements ProductRepository {
