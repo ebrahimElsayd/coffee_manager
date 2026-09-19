@@ -84,7 +84,7 @@ export async function getRecentPaidOrders(range: ReportRange, limit = 10): Promi
   if (!db) throw new Error("Supabase unavailable");
   const { start, end } = getReportPeriod(range);
   const { data, error } = await db.from("payments")
-    .select("grand_total,amount,method,paid_at,orders!inner(order_number,status,payment_status,table_sessions!inner(cafe_tables!inner(table_number)))")
+    .select("id,grand_total,amount,method,paid_at,table_sessions!inner(cafe_tables!inner(table_number),orders(order_number,status,payment_status,created_at))")
     .eq("status", "paid")
     .gte("paid_at", start.toISOString())
     .lt("paid_at", end.toISOString())
@@ -92,10 +92,14 @@ export async function getRecentPaidOrders(range: ReportRange, limit = 10): Promi
     .limit(Math.max(1, Math.min(limit, 50)));
   if (error) throw error;
   return ((data ?? []) as unknown[]).flatMap((entry) => {
-    const row = entry as { grand_total?: unknown; amount?: unknown; method?: unknown; paid_at?: unknown; orders?: unknown };
-    const order = Array.isArray(row.orders) ? row.orders[0] : row.orders as { order_number?: unknown; status?: unknown; payment_status?: unknown; table_sessions?: unknown } | undefined;
+    const row = entry as { id?: unknown; grand_total?: unknown; amount?: unknown; method?: unknown; paid_at?: unknown; table_sessions?: unknown };
+    const session = Array.isArray(row.table_sessions) ? row.table_sessions[0] : row.table_sessions as { cafe_tables?: unknown; orders?: unknown } | undefined;
+    type PaidOrderCandidate = { order_number?: unknown; status?: unknown; payment_status?: unknown; created_at?: unknown };
+    const sessionOrders: PaidOrderCandidate[] = Array.isArray(session?.orders) ? session.orders as PaidOrderCandidate[] : [];
+    const order = sessionOrders
+      .filter((candidate: PaidOrderCandidate) => candidate.status !== "cancelled" && candidate.payment_status === "paid")
+      .sort((a: PaidOrderCandidate, b: PaidOrderCandidate) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")))[0];
     if (!order || order.status === "cancelled" || order.payment_status !== "paid") return [];
-    const session = Array.isArray(order.table_sessions) ? order.table_sessions[0] : order.table_sessions as { cafe_tables?: unknown } | undefined;
     const table = session && (Array.isArray(session.cafe_tables) ? session.cafe_tables[0] : session.cafe_tables as { table_number?: unknown } | undefined);
     return [{
       orderNumber: Number(order.order_number ?? 0),
