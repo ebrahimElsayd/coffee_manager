@@ -3,7 +3,7 @@ import { calculateBillTotals } from "./calculate-bill-totals";
 import { buildPersonBillBreakdown } from "./build-person-bill-breakdown";
 import { formatReceiptDateTime } from "./receipt-format";
 
-export type BillBranding = { cafeName?: string; branchName?: string; phone?: string; address?: string; currency?: string; footer?: string; locale?: "ar" | "en"; receipt?: { showPrices: boolean; serviceEnabled: boolean; serviceType: "percent" | "fixed"; serviceValue: number; taxEnabled: boolean; taxType: "percent" | "fixed"; taxValue: number } };
+export type BillBranding = { cafeName?: string; branchName?: string; phone?: string; address?: string; currency?: string; footer?: string; locale?: "ar" | "en"; receipt?: { header?: string; showPrices: boolean; serviceEnabled: boolean; serviceType: "percent" | "fixed"; serviceValue: number; taxEnabled: boolean; taxType: "percent" | "fixed"; taxValue: number } };
 export type ReceiptMetadata = { number: number; issuedAt: string };
 
 function escapeHtml(value: unknown) {
@@ -19,7 +19,8 @@ function drinkDetails(drink: ManagerOrder["drinks"][number]) {
 
 export function printBill(table: string, orders: ManagerOrder[], branding: BillBranding = {}, cash?: { received: number; change: number }, targetWindow?: Window | null, autoPrint = false, receipt?: ReceiptMetadata) {
   if (!orders.length) return;
-  const cafeName = escapeHtml(branding.cafeName || "King's Cafe");
+  const configuredCafeName = branding.cafeName?.trim() || branding.receipt?.header?.trim();
+  const cafeName = escapeHtml(configuredCafeName || "Cafe Management");
   const currency = escapeHtml(branding.currency?.split(" ")[0] || "EGP");
   const branch = escapeHtml(branding.branchName || "");
   const contact = escapeHtml([branding.phone, branding.address].filter(Boolean).join(" · "));
