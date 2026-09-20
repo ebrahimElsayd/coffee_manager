@@ -9,6 +9,7 @@ import { AccountSettingsDialog } from "@/shared/presentation/components/account-
 import { getSupabaseBrowserClient } from "@/shared/infrastructure/supabase/supabase-browser";
 import { clearManagerOrdersCache } from "@/features/orders/presentation/hooks/use-manager-orders";
 import { useManagerI18n } from "@/shared/i18n/use-manager-i18n";
+import { useManagerAuth } from "@/shared/presentation/providers/manager-auth-provider";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", arabic: "لوحة التحكم", icon: "dashboard" },
@@ -26,15 +27,19 @@ export function ManagerSidebar() {
   const { settings, updateSettings } = useManagerSettings();
   const { locale, pick } = useManagerI18n();
   const { newOrderCount } = useManagerNotifications();
+  const { identity, logout: signOut } = useManagerAuth();
   useEffect(() => {
     navigation.forEach(({ href }) => router.prefetch(href));
   }, [router]);
 
-  const logout = () => {
+  const logout = async () => {
     clearManagerOrdersCache();
-    window.sessionStorage.removeItem("coffee-manager:session");
-    void getSupabaseBrowserClient()?.auth.signOut();
-    router.push("/login");
+    try {
+      await signOut();
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
   };
 
   return (
@@ -66,12 +71,12 @@ export function ManagerSidebar() {
         {newOrderCount > 0 && <b className="ml-auto rounded-full bg-[var(--gold)] px-1.5 py-0.5 text-[10px] text-[#17120a]">{newOrderCount > 99 ? "99+" : newOrderCount}</b>}
       </Link>
 
-      {accountOpen && <div className="absolute bottom-[86px] left-2 right-2 z-30 rounded-xl border border-white/15 bg-[#171916] p-2 shadow-2xl lg:left-3 lg:right-3"><div className="border-b border-white/10 px-3 py-2"><p className="text-xs text-white/45">{pick("Current account", "الحساب الحالي")}</p><b className="mt-1 block text-sm">{pick("Admin", "مدير النظام")}</b><small className="mt-1 block truncate text-[11px] text-[var(--gold)]">{settings.adminEmail}</small><small className="mt-1 block truncate text-[10px] text-white/40">{settings.adminPhone}</small></div><button type="button" onClick={() => setAccountSettingsOpen(true)} className="mt-1 w-full rounded-lg px-3 py-2 text-left text-xs text-white/70 hover:bg-white/[.06] hover:text-white">⚙ {pick("Account Settings", "إعدادات الحساب")}</button><button type="button" onClick={logout} className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-300/80 hover:bg-red-400/10 hover:text-red-200">↪ {pick("Logout", "تسجيل الخروج")}</button></div>}
+      {accountOpen && <div className="absolute bottom-[86px] left-2 right-2 z-30 rounded-xl border border-white/15 bg-[#171916] p-2 shadow-2xl lg:left-3 lg:right-3"><div className="border-b border-white/10 px-3 py-2"><p className="text-xs text-white/45">{pick("Current account", "الحساب الحالي")}</p><b className="mt-1 block text-sm">{identity?.displayName || pick("Operations", "فريق التشغيل")}</b><small className="mt-1 block truncate text-[11px] text-[var(--gold)]">{identity?.email || ""}</small><small className="mt-1 block truncate text-[10px] text-white/40">{identity?.phone || ""}</small></div><button type="button" onClick={() => setAccountSettingsOpen(true)} className="mt-1 w-full rounded-lg px-3 py-2 text-left text-xs text-white/70 hover:bg-white/[.06] hover:text-white">⚙ {pick("Account Settings", "إعدادات الحساب")}</button><button type="button" onClick={() => { void logout(); }} className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-300/80 hover:bg-red-400/10 hover:text-red-200">↪ {pick("Logout", "تسجيل الخروج")}</button></div>}
 
-      <AccountSettingsDialog open={accountSettingsOpen} settings={settings} onClose={() => setAccountSettingsOpen(false)} onSavePhone={async (phone) => { const db = getSupabaseBrowserClient(); if (db) { const { error } = await db.auth.updateUser({ phone }); if (error) throw error; } updateSettings({ adminPhone: phone }); return { verificationRequired: Boolean(db) }; }} onVerifyPhone={async (phone, token) => { const db = getSupabaseBrowserClient(); if (!db) return; const { error } = await db.auth.verifyOtp({ phone, token, type: "phone_change" }); if (error) throw error; }} />
-      <button type="button" onClick={() => setAccountOpen((open) => !open)} className="flex items-center justify-center gap-3 border-t border-white/[.08] px-1 pt-5 text-start text-[#d2ccc0] transition hover:text-white lg:justify-start lg:px-3 lg:pt-6" aria-label={pick("Admin account", "حساب المدير")} aria-expanded={accountOpen}>
+      <AccountSettingsDialog open={accountSettingsOpen} settings={{ ...settings, adminEmail: identity?.email || "", adminPhone: identity?.phone || "" }} onClose={() => setAccountSettingsOpen(false)} onSavePhone={async (phone) => { const db = getSupabaseBrowserClient(); if (db) { const { error } = await db.auth.updateUser({ phone }); if (error) throw error; } updateSettings({ adminPhone: phone }); return { verificationRequired: Boolean(db) }; }} onVerifyPhone={async (phone, token) => { const db = getSupabaseBrowserClient(); if (!db) return; const { error } = await db.auth.verifyOtp({ phone, token, type: "phone_change" }); if (error) throw error; }} />
+      <button type="button" onClick={() => setAccountOpen((open) => !open)} className="flex items-center justify-center gap-3 border-t border-white/[.08] px-1 pt-5 text-start text-[#d2ccc0] transition hover:text-white lg:justify-start lg:px-3 lg:pt-6" aria-label={pick("Operations account", "حساب فريق التشغيل")} aria-expanded={accountOpen}>
         <span className="grid size-10 place-items-center rounded-full border border-[var(--gold)]/70 bg-[#2b251a] text-xl text-[var(--gold)]">●</span>
-        <span className="flex flex-1 flex-col leading-tight"><span className="text-[13px]">{pick("Admin", "مدير النظام")}</span></span>
+        <span className="flex flex-1 flex-col leading-tight"><span className="text-[13px]">{identity?.displayName || pick("Operations", "فريق التشغيل")}</span></span>
         <span className="text-lg text-white/50">⌄</span>
       </button>
     </aside>
