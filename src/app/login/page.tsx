@@ -18,6 +18,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
   const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
@@ -55,6 +57,20 @@ export default function LoginPage() {
     window.setTimeout(() => router.push('/dashboard'), 1900);
   }
 
+  async function handlePasswordReset() {
+    setError(""); setResetMessage("");
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) { setError("اكتب البريد الإلكتروني أولًا."); return; }
+    const db = getSupabaseBrowserClient();
+    if (!db) { setError("خدمة المصادقة غير مهيأة."); return; }
+    setIsResetting(true);
+    const redirectTo = `${window.location.origin}/reset-password`;
+    const { error: resetError } = await db.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+    setIsResetting(false);
+    if (resetError) { setError("تعذر إرسال رابط إعادة التعيين. تحقق من البريد وحاول مرة أخرى."); return; }
+    setResetMessage("تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.");
+  }
+
   return (
     <main className={`login-shell relative grid min-h-screen place-items-center overflow-hidden bg-[var(--background)] p-6 ${isLeaving ? "is-leaving" : ""}`}>
       <span className="login-orbit login-orbit-two" /><span className="login-orbit login-orbit-three" /><span className="login-particle login-particle-one" /><span className="login-particle login-particle-two" /><span className="login-particle login-particle-three" /><span className="login-grid" />
@@ -85,7 +101,9 @@ export default function LoginPage() {
             </label>
             {error && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p>}
             <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-[var(--gold)] px-5 py-3.5 font-bold text-[#17120a] transition hover:bg-[#f0b53c] disabled:cursor-wait disabled:opacity-60">{isSubmitting ? pick("Signing in...", "جاري الدخول...") : pick("Open operations", "دخول لوحة التشغيل")}</button>
+            <button type="button" onClick={() => { void handlePasswordReset(); }} disabled={isResetting} className="w-full text-sm text-[var(--gold)] underline-offset-4 hover:underline disabled:opacity-60">{isResetting ? pick("Sending reset link...", "جاري إرسال الرابط...") : pick("Forgot password?", "نسيت كلمة المرور؟")}</button>
           </form>
+          {resetMessage && <p role="status" className="mt-4 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200">{resetMessage}</p>}
           <p className="mt-8 text-center text-xs leading-6 text-white/35">{pick("This account is shared by the operating team.", "الحساب مشترك حاليًا بين فريق التشغيل.")}</p>
         </div>
       </section>
