@@ -41,6 +41,8 @@ export function ManagerSettingsProvider({ children }: { children: React.ReactNod
       const stored = window.localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as Partial<ManagerSettings>;
+        delete parsed.adminEmail;
+        delete parsed.adminPhone;
         // Hydration is the one intentional state sync from browser storage.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setSettings({ ...defaults, ...parsed, notifications: { ...defaults.notifications, ...parsed.notifications }, receipt: { ...defaults.receipt, ...parsed.receipt } });
@@ -58,13 +60,11 @@ export function ManagerSettingsProvider({ children }: { children: React.ReactNod
       if (!active) return;
       const publicBranding = cafe ? null : await loadPublicCafeBranding().catch(() => null);
       if (!active) return;
-      const user = authResult.data.session?.user;
+      void authResult;
       setSettings((current) => ({
         ...current,
         ...(publicBranding ? { cafeName: publicBranding.cafeName || current.cafeName, logo: publicBranding.logo || current.logo, receipt: { ...current.receipt, header: publicBranding.cafeName || current.receipt.header } } : {}),
         ...(cafe ? { cafeName: cafe.cafe_name || current.cafeName, branchName: cafe.branch_name || current.branchName, phone: cafe.phone ?? current.phone, currency: cafe.currency || current.currency, address: cafe.address ?? current.address, logo: cafe.logo_url ?? current.logo, receipt: { ...current.receipt, header: cafe.cafe_name || current.receipt.header, serviceEnabled: cafe.service_charge_enabled, serviceType: cafe.service_charge_type, serviceValue: Number(cafe.service_charge_value || 0), taxEnabled: cafe.tax_charge_enabled, taxType: cafe.tax_charge_type, taxValue: Number(cafe.tax_charge_value || 0) } } : {}),
-        adminEmail: user?.email ?? current.adminEmail,
-        adminPhone: user?.phone || current.adminPhone,
       }));
       setRemoteLoaded(true);
     }).catch(() => { if (active) setRemoteLoaded(true); });
@@ -93,7 +93,9 @@ export function ManagerSettingsProvider({ children }: { children: React.ReactNod
     try {
       // The logo is a remote asset; never duplicate its base64 payload in the
       // browser cache. This keeps settings persistence below storage quotas.
-      window.localStorage.setItem(storageKey, JSON.stringify({ ...settings, logo: "" }));
+      const { adminEmail: _adminEmail, adminPhone: _adminPhone, ...cafeSettings } = settings;
+      void _adminEmail; void _adminPhone;
+      window.localStorage.setItem(storageKey, JSON.stringify({ ...cafeSettings, logo: "" }));
     } catch (error) {
       // Storage can still be unavailable in private browsing; keep the
       // in-memory settings usable in that case.
