@@ -8,7 +8,7 @@ type GroupRow = { id: string; name: string; name_ar: string; is_required: boolea
 type LinkRow = { product_id: string; group_id: string; sort_order: number; modifier_groups: GroupRow | null };
 type ProductRow = { id: string; slug: string; name: string; name_ar: string; category_id: string | null; base_price: number; cost_price: number | null; image_url: string | null; availability: string; available_for_takeaway: boolean; description: string | null; menu_categories: { name: string; name_ar: string } | null };
 
-const PRODUCT_IMAGE_MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+const PRODUCT_IMAGE_MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 const PRODUCT_IMAGE_MAX_OUTPUT_BYTES = 500 * 1024;
 const PRODUCT_IMAGE_MAX_SIDE = 1600;
 const PRODUCT_IMAGE_MIN_SIDE = 640;
@@ -29,7 +29,7 @@ async function persistProductImage(db: ReturnType<typeof getSupabaseBrowserClien
 async function optimizeProductImage(dataUrl: string): Promise<Blob> {
   const original = await (await fetch(dataUrl)).blob();
   if (!original.type.startsWith("image/")) throw new Error("The selected file is not a valid image.");
-  if (original.size > PRODUCT_IMAGE_MAX_SOURCE_BYTES) throw new Error("Image is too large. Choose an image smaller than 20 MB.");
+  if (original.size > PRODUCT_IMAGE_MAX_SOURCE_BYTES) throw new Error("Image is too large. Choose an image smaller than 5 MB.");
   if (typeof createImageBitmap !== "function") {
     if (original.size <= PRODUCT_IMAGE_MAX_OUTPUT_BYTES) return original;
     throw new Error("This browser cannot safely compress the selected image.");
