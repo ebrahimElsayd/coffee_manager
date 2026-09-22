@@ -32,3 +32,10 @@ test("product uploads enforce bounded dimensions and a 500 KB encoded image", ()
   assert.match(repositorySource, /canvasToWebp\(canvas, quality\)/);
   assert.match(repositorySource, /compressed\.size\s*<=\s*PRODUCT_IMAGE_MAX_OUTPUT_BYTES/);
 });
+
+test("production product removal archives the item instead of deleting sales history", () => {
+  const repositorySource = readFileSync(fileURLToPath(new URL("../src/features/products/infrastructure/supabase-product-repository.ts", import.meta.url)), "utf8");
+  assert.match(repositorySource, /rpc\("manager_archive_product"/);
+  assert.match(repositorySource, /neq\("availability",\s*"hidden"\)/);
+  assert.doesNotMatch(repositorySource, /from\("menu_products"\)\.delete\(\)/);
+});
