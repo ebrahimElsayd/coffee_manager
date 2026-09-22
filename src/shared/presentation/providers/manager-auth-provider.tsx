@@ -8,7 +8,9 @@ import { clearManagerOrdersCache } from "@/features/orders/presentation/hooks/us
 type ManagerIdentity = {
   userId: string;
   email: string;
+  emailConfirmed: boolean;
   phone: string;
+  phoneConfirmed: boolean;
   displayName: string;
   role: string;
   cafeId: string;
@@ -26,7 +28,9 @@ function identityFrom(user: User, profile: { display_name: string; role: string;
   return {
     userId: user.id,
     email: user.email ?? "",
+    emailConfirmed: Boolean(user.email_confirmed_at),
     phone: user.phone ?? "",
+    phoneConfirmed: Boolean(user.phone_confirmed_at),
     displayName: profile.display_name || user.email?.split("@")[0] || "Operations",
     role: profile.role,
     cafeId: profile.cafe_id,
