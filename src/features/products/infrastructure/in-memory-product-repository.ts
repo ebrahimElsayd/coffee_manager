@@ -15,20 +15,23 @@ class InMemoryProductRepository implements ProductRepository {
   private products = seedProducts.map((product) => ({ ...product }));
   private listeners = new Set<() => void>();
 
-  async list() { return this.products.map((product) => ({ ...product })); }
+  async list() { return this.products.filter((product) => product.visible !== false).map((product) => ({ ...product })); }
+  async listArchived() { return this.products.filter((product) => product.visible === false).map((product) => ({ ...product })); }
+  async countArchived() { return this.products.filter((product) => product.visible === false).length; }
   async listCategories() { return [...new Set(this.products.map((product) => product.category).filter(Boolean))]; }
   async getById(id: string) {
     const key = normalizeKey(id);
-    const product = this.products.find((item) => normalizeKey(item.id) === key);
+    const product = this.products.find((item) => item.visible !== false && normalizeKey(item.id) === key);
     return product ? cloneProduct(product) : null;
   }
   async getByName(name: string) {
     const normalized = normalizeKey(name);
-    const product = this.products.find((item) => normalizeKey(item.name) === normalized || normalizeKey(item.id) === normalized);
+    const product = this.products.find((item) => item.visible !== false && (normalizeKey(item.name) === normalized || normalizeKey(item.id) === normalized));
     return product ? cloneProduct(product) : null;
   }
   async save(product: ProductRecord) { this.products = [...this.products.filter((item) => item.id !== product.id), cloneProduct(product)]; this.listeners.forEach((listener) => listener()); }
-  async delete(id: string) { const key = normalizeKey(id); this.products = this.products.filter((product) => normalizeKey(product.id) !== key && normalizeKey(product.name) !== key); this.listeners.forEach((listener) => listener()); }
+  async delete(id: string) { const key = normalizeKey(id); this.products = this.products.map((product) => normalizeKey(product.id) === key || normalizeKey(product.name) === key ? { ...product, visible: false, available: false } : product); this.listeners.forEach((listener) => listener()); }
+  async restore(id: string) { const key = normalizeKey(id); this.products = this.products.map((product) => normalizeKey(product.id) === key || normalizeKey(product.name) === key ? { ...product, visible: true, available: false } : product); this.listeners.forEach((listener) => listener()); }
   async updateAvailability(id: string, available: boolean) { const key = normalizeKey(id); this.products = this.products.map((product) => normalizeKey(product.id) === key || normalizeKey(product.name) === key ? { ...product, available } : product); this.listeners.forEach((listener) => listener()); }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
 }
