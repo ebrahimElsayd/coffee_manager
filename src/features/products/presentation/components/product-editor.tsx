@@ -17,6 +17,43 @@ type ProductDraft = {
 };
 
 const EMPTY_DRAFT: ProductDraft = { name: "", arabicName: "", category: "", price: "", cost: "", description: "", image: "", available: true, availableForTakeaway: true, visible: true, customizations: [] };
+const MAX_SOURCE_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_PREVIEW_IMAGE_BYTES = 250 * 1024;
+const MAX_IMAGE_SIDE = 1200;
+
+function canvasToWebp(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Unable to encode image.")), "image/webp", quality));
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Unable to read image.")); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); });
+}
+
+async function prepareProductImage(file: File): Promise<string> {
+  if (!(["image/jpeg", "image/png", "image/webp"] as string[]).includes(file.type)) throw new Error("Choose a JPG, PNG, or WebP image.");
+  if (file.size > MAX_SOURCE_IMAGE_BYTES) throw new Error("Image must be 2 MB or smaller.");
+  const bitmap = await createImageBitmap(file);
+  try {
+    const sourceSide = Math.min(bitmap.width, bitmap.height);
+    const sourceX = (bitmap.width - sourceSide) / 2;
+    const sourceY = (bitmap.height - sourceSide) / 2;
+    let targetSide = Math.min(sourceSide, MAX_IMAGE_SIDE);
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Unable to prepare image.");
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      canvas.width = targetSide; canvas.height = targetSide;
+      context.clearRect(0, 0, targetSide, targetSide);
+      context.drawImage(bitmap, sourceX, sourceY, sourceSide, sourceSide, 0, 0, targetSide, targetSide);
+      for (const quality of [0.82, 0.72, 0.62, 0.52, 0.44]) {
+        const blob = await canvasToWebp(canvas, quality);
+        if (blob.size <= MAX_PREVIEW_IMAGE_BYTES) return blobToDataUrl(blob);
+      }
+      targetSide = Math.max(480, Math.round(targetSide * 0.82));
+    }
+    throw new Error("Image could not be compressed below 250 KB. Choose a simpler image.");
+  } finally { bitmap.close(); }
+}
 
 export function ProductEditor({ editId }: { editId: string | null }) {
   const router = useRouter();
@@ -27,6 +64,8 @@ export function ProductEditor({ editId }: { editId: string | null }) {
   const [attempted, setAttempted] = useState(false);
   const [notice, setNotice] = useState("");
   const [loadingProduct, setLoadingProduct] = useState(isEditMode);
+  const [saving, setSaving] = useState(false);
+  const [imageProcessing, setImageProcessing] = useState(false);
   const [categoryModal, setCategoryModal] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [customizationModal, setCustomizationModal] = useState(false);
@@ -86,7 +125,7 @@ export function ProductEditor({ editId }: { editId: string | null }) {
   const isValid = !errors.arabicName && !errors.category && !errors.price;
 
   const saveProduct = async () => {
-    if (loadingProduct) return;
+    if (loadingProduct || saving || imageProcessing) return;
     setAttempted(true);
     if (!isValid) { setNotice("أكمل الحقول المطلوبة أولًا"); window.setTimeout(() => setNotice(""), 1200); return; }
     const product: ProductRecord = {
@@ -96,6 +135,7 @@ export function ProductEditor({ editId }: { editId: string | null }) {
       customizations: draft.customizations.map((item) => ({ ...item, choices: item.choices.map((choice) => ({ ...choice })) })),
     };
     try {
+      setSaving(true);
       await productRepository.save(product);
       router.push("/products");
     } catch (error) {
@@ -106,15 +146,18 @@ export function ProductEditor({ editId }: { editId: string | null }) {
           : String(error);
       setNotice(detail || pick("Could not save product. Please try again.", "تعذر حفظ المنتج. حاول مرة أخرى."));
       window.setTimeout(() => setNotice(""), 5000);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const uploadImage = (file?: File) => {
+  const uploadImage = async (file?: File) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { setNotice("حجم الصورة يجب ألا يتجاوز 5MB"); return; }
-    const reader = new FileReader();
-    reader.onload = () => { if (typeof reader.result === "string") update("image", reader.result); };
-    reader.readAsDataURL(file);
+    setImageProcessing(true);
+    setNotice("");
+    try { update("image", await prepareProductImage(file)); }
+    catch (error) { setNotice(error instanceof Error ? error.message : pick("Could not process image.", "تعذرت معالجة الصورة.")); }
+    finally { setImageProcessing(false); }
   };
 
   const saveCategory = () => {
@@ -146,7 +189,7 @@ export function ProductEditor({ editId }: { editId: string | null }) {
     <div className="min-h-screen p-4 sm:p-6 xl:p-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4"><Link href="/products" className="grid size-10 place-items-center rounded-full border border-white/20 bg-white/[.04] text-xl text-white/70 hover:border-[var(--gold)] hover:text-[var(--gold)]">←</Link><div><h1 className="font-serif text-3xl">{isEditMode ? pick("Edit Product", "تعديل المنتج") : pick("Add New Product", "إضافة منتج جديد")}</h1><p className="mt-1 text-sm text-white/45">{isEditMode ? pick("Update this menu item", "تحديث بيانات هذا المنتج") : pick("Create a new menu item for your café", "إنشاء منتج جديد في قائمة الكافيه")}</p></div></div>
-        <div className="flex gap-3"><Link href="/products" className="rounded-lg border border-white/20 px-5 py-2.5 text-sm text-white/70">{pick("Cancel", "إلغاء")}</Link><button type="button" disabled={loadingProduct} onClick={() => void saveProduct()} className="rounded-lg bg-[#eab454] px-5 py-2.5 text-sm font-semibold text-[#1a1308] disabled:cursor-wait disabled:opacity-50">▣　{loadingProduct ? pick("Loading…", "جاري التحميل…") : isEditMode ? pick("Update Product", "تحديث المنتج") : pick("Save Product", "حفظ المنتج")}</button></div>
+        <div className="flex gap-3"><Link href="/products" className="rounded-lg border border-white/20 px-5 py-2.5 text-sm text-white/70">{pick("Cancel", "إلغاء")}</Link><button type="button" disabled={loadingProduct || saving || imageProcessing} onClick={() => void saveProduct()} className="rounded-lg bg-[#eab454] px-5 py-2.5 text-sm font-semibold text-[#1a1308] disabled:cursor-wait disabled:opacity-50">▣　{loadingProduct ? pick("Loading…", "جاري التحميل…") : saving ? pick("Saving…", "جارٍ الحفظ…") : imageProcessing ? pick("Preparing image…", "جارٍ تجهيز الصورة…") : isEditMode ? pick("Update Product", "تحديث المنتج") : pick("Save Product", "حفظ المنتج")}</button></div>
       </header>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -154,7 +197,7 @@ export function ProductEditor({ editId }: { editId: string | null }) {
           <section className="rounded-2xl border border-white/15 bg-[#111312] p-5 shadow-xl">
             <h2 className="mb-5 font-serif text-xl">▤　{pick("Product Details", "تفاصيل المنتج")}</h2>
             <div className="grid gap-6 lg:grid-cols-[255px_minmax(0,1fr)]">
-              <div><div className="relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-black/30"><Image src={draft.image || "/images/manager-hero.png"} alt="Product" fill sizes="(min-width: 1280px) 24vw, (min-width: 768px) 38vw, 100vw" className="object-cover" /></div><label className="mt-3 flex cursor-pointer items-center justify-center rounded-lg border border-[var(--gold)]/70 py-2.5 text-sm text-[var(--gold)]">↥　{pick("Upload Image", "رفع صورة")}<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0])} /></label><p className="mt-2 text-center text-[10px] text-white/40">{pick("JPG, PNG or WebP · Max 5MB · 1:1 recommended", "JPG أو PNG أو WebP · بحد أقصى 5MB · يفضّل مقاس 1:1")}</p></div>
+              <div>{draft.image ? <><div className="relative aspect-square overflow-hidden rounded-xl border border-[var(--gold)]/45 bg-black/30"><Image src={draft.image} alt={pick("Product image preview", "معاينة صورة المنتج")} fill sizes="(min-width: 1280px) 24vw, (min-width: 768px) 38vw, 100vw" className="object-cover" /></div><div className="mt-3 grid grid-cols-2 gap-2"><label className="flex cursor-pointer items-center justify-center rounded-lg border border-[var(--gold)]/70 py-2.5 text-sm text-[var(--gold)]">↥　{imageProcessing ? pick("Preparing…", "جارٍ التجهيز…") : pick("Change image", "تغيير الصورة")}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageProcessing} className="hidden" onChange={(event) => { void uploadImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label><button type="button" disabled={imageProcessing} onClick={() => update("image", "")} className="rounded-lg border border-red-300/35 py-2.5 text-sm text-red-200 disabled:opacity-50">× {pick("Remove", "إزالة")}</button></div></> : <label className="group flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/20 bg-white/[.025] px-5 text-center transition hover:border-[var(--gold)]/70 hover:bg-[var(--gold)]/[.04]"><svg className="size-12 text-[var(--gold)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 15 3-3 2 2 2-2 3 3M12 9v-5m-2 2 2-2 2 2"/></svg><strong className="mt-4 text-sm text-white/80">{imageProcessing ? pick("Preparing image…", "جارٍ تجهيز الصورة…") : pick("Click to upload a product image", "اضغط لرفع صورة المنتج")}</strong><span className="mt-2 text-xs leading-5 text-white/40">{pick("800×800 recommended · JPG, PNG or WebP", "مقاس 800×800 موصى به · JPG أو PNG أو WebP")}</span><span className="text-xs leading-5 text-white/40">{pick("Maximum 2 MB · compressed automatically below 250 KB", "بحد أقصى 2MB · تُضغط تلقائيًا لأقل من 250KB")}</span><input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageProcessing} className="hidden" onChange={(event) => { void uploadImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>}</div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={pick("Arabic Name", "الاسم بالعربية")} required attempted={attempted} invalid={errors.arabicName} value={draft.arabicName} onChange={(value) => update("arabicName", value)} dir="rtl" />
                 <Field label={pick("Product Name (English)", "اسم المنتج بالإنجليزية")} optional value={draft.name} onChange={(value) => update("name", value)} dir="ltr" />
@@ -190,7 +233,7 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
 
 function CustomizationCard({ item, onEdit, onDelete }: { item: Customization; onEdit: () => void; onDelete: () => void }) { const { pick } = useManagerI18n(); return <article className="rounded-xl border border-white/10 bg-white/[.025] p-4"><div className="flex items-start justify-between"><div><h3 className="font-serif text-lg">{pick(item.name, item.arabicName || item.name)}</h3><div className="mt-2 flex gap-2"><span className="rounded bg-white/10 px-2 py-1 text-[10px]">{item.choices.length} {pick("choices", "اختيارات")}</span><span className="rounded bg-white/10 px-2 py-1 text-[10px]">{item.required ? pick("Required", "مطلوب") : pick("Optional", "اختياري")}</span></div></div><button type="button" onClick={onDelete} className="text-white/35 hover:text-red-300">×</button></div><div className="mt-4 flex flex-wrap gap-2">{item.choices.map((choice) => <span key={choice.name} className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/65">{pick(choice.name, choice.arabicName || choice.name)}{choice.price > 0 && <b className="ml-1 text-[#f5ca72]">+{choice.price} EGP</b>}</span>)}</div><button type="button" onClick={onEdit} className="mt-4 w-full rounded-lg border border-[var(--gold)]/50 py-2 text-xs text-[var(--gold)]">⚙ {pick("Edit choices", "تعديل الاختيارات")}</button></article>; }
 
-function ProductPreview({ draft }: { draft: ProductDraft }) { const { pick } = useManagerI18n(); return <aside className="h-fit rounded-2xl border border-white/15 bg-[#111312] p-5"><h2 className="font-serif text-xl">◉　{pick("Customer Preview", "معاينة العميل")}</h2><div className="relative mt-4 aspect-[1.2] overflow-hidden rounded-xl border border-white/15"><Image src={draft.image || "/images/manager-hero.png"} alt={pick("Preview", "معاينة")} fill className="object-cover" /></div><h3 className="mt-4 font-serif text-2xl">{draft.arabicName && draft.name ? `${draft.arabicName} · ${draft.name}` : draft.arabicName || draft.name || pick("Product name", "اسم المنتج")}</h3>{draft.description && <p className="mt-2 text-sm leading-6 text-white/55">{draft.description}</p>}<p className="mt-2 text-xl text-[#eab454]">{(Number(draft.price) || 0).toLocaleString()} EGP</p><div className="my-4 space-y-5 border-t border-white/10 pt-4">{draft.customizations.length ? draft.customizations.map((item) => <div key={item.id}><div className="mb-2 flex items-center justify-between"><p className="text-sm">{pick(item.name, item.arabicName || item.name)}</p><span className="text-[10px] text-white/40">{item.required ? pick("Required", "مطلوب") : pick("Optional", "اختياري")}</span></div><div className="flex flex-wrap gap-2">{item.choices.map((choice, index) => <span key={choice.name} className={index === 0 ? "rounded-lg border border-[var(--gold)] bg-[var(--gold)]/15 px-3 py-1.5 text-xs text-[#f5ca72]" : "rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/60"}>{pick(choice.name, choice.arabicName || choice.name)}{choice.price > 0 && ` +${choice.price} EGP`}</span>)}</div></div>) : <p className="text-sm text-white/45">{pick("No customizations for this product.", "لا توجد تخصيصات لهذا المنتج.")}</p>}</div></aside>; }
+function ProductPreview({ draft }: { draft: ProductDraft }) { const { pick } = useManagerI18n(); return <aside className="h-fit rounded-2xl border border-white/15 bg-[#111312] p-5"><h2 className="font-serif text-xl">◉　{pick("Customer Preview", "معاينة العميل")}</h2><div className="relative mt-4 grid aspect-[1.2] place-items-center overflow-hidden rounded-xl border border-white/15 bg-white/[.025]">{draft.image ? <Image src={draft.image} alt={pick("Preview", "معاينة")} fill className="object-cover" /> : <span className="text-center text-xs text-white/35"><span className="block text-3xl text-[var(--gold)]/60">▧</span>{pick("No product image", "لا توجد صورة للمنتج")}</span>}</div><h3 className="mt-4 font-serif text-2xl">{draft.arabicName && draft.name ? `${draft.arabicName} · ${draft.name}` : draft.arabicName || draft.name || pick("Product name", "اسم المنتج")}</h3>{draft.description && <p className="mt-2 text-sm leading-6 text-white/55">{draft.description}</p>}<p className="mt-2 text-xl text-[#eab454]">{(Number(draft.price) || 0).toLocaleString()} EGP</p><div className="my-4 space-y-5 border-t border-white/10 pt-4">{draft.customizations.length ? draft.customizations.map((item) => <div key={item.id}><div className="mb-2 flex items-center justify-between"><p className="text-sm">{pick(item.name, item.arabicName || item.name)}</p><span className="text-[10px] text-white/40">{item.required ? pick("Required", "مطلوب") : pick("Optional", "اختياري")}</span></div><div className="flex flex-wrap gap-2">{item.choices.map((choice, index) => <span key={choice.name} className={index === 0 ? "rounded-lg border border-[var(--gold)] bg-[var(--gold)]/15 px-3 py-1.5 text-xs text-[#f5ca72]" : "rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/60"}>{pick(choice.name, choice.arabicName || choice.name)}{choice.price > 0 && ` +${choice.price} EGP`}</span>)}</div></div>) : <p className="text-sm text-white/45">{pick("No customizations for this product.", "لا توجد تخصيصات لهذا المنتج.")}</p>}</div></aside>; }
 
 function Modal({ title, subtitle, onClose, children }: { title: string; subtitle: string; onClose: () => void; children: React.ReactNode }) { return <div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4" onClick={onClose}><div className="w-full max-w-lg rounded-2xl border border-[var(--gold)]/60 bg-[#151615] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><div><h2 className="font-serif text-xl">{title}</h2><p className="mt-1 text-xs text-white/45">{subtitle}</p></div><button type="button" onClick={onClose} className="text-xl text-white/60">×</button></div>{children}</div></div>; }
 function ModalActions({ onCancel, onSave, disabled, saveLabel }: { onCancel: () => void; onSave: () => void; disabled: boolean; saveLabel: string }) { const { pick } = useManagerI18n(); return <div className="mt-6 flex justify-end gap-3 border-t border-white/10 pt-4"><button type="button" onClick={onCancel} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/65">{pick("Cancel", "إلغاء")}</button><button type="button" onClick={onSave} disabled={disabled} className="rounded-lg bg-[#eab454] px-5 py-2 text-sm font-semibold text-[#1a1308] disabled:opacity-40">{saveLabel}</button></div>; }

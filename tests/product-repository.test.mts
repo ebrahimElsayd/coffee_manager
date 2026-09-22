@@ -30,12 +30,15 @@ test("product repository supports the complete local product lifecycle", async (
   assert.equal(await productRepository.countArchived(), 0);
 });
 
-test("product uploads enforce bounded dimensions and a 500 KB encoded image", () => {
+test("product uploads enforce bounded dimensions and a 250 KB encoded image", () => {
   const repositorySource = readFileSync(fileURLToPath(new URL("../src/features/products/infrastructure/supabase-product-repository.ts", import.meta.url)), "utf8");
-  assert.match(repositorySource, /PRODUCT_IMAGE_MAX_OUTPUT_BYTES\s*=\s*500\s*\*\s*1024/);
-  assert.match(repositorySource, /PRODUCT_IMAGE_MAX_SIDE\s*=\s*1600/);
+  assert.match(repositorySource, /PRODUCT_IMAGE_MAX_SOURCE_BYTES\s*=\s*2\s*\*\s*1024\s*\*\s*1024/);
+  assert.match(repositorySource, /PRODUCT_IMAGE_MAX_OUTPUT_BYTES\s*=\s*250\s*\*\s*1024/);
+  assert.match(repositorySource, /PRODUCT_IMAGE_MAX_SIDE\s*=\s*1200/);
   assert.match(repositorySource, /canvasToWebp\(canvas, quality\)/);
   assert.match(repositorySource, /compressed\.size\s*<=\s*PRODUCT_IMAGE_MAX_OUTPUT_BYTES/);
+  assert.match(repositorySource, /previousImagePath/);
+  assert.match(repositorySource, /uploadedImagePath/);
 });
 
 test("production product removal archives the item instead of deleting sales history", () => {
@@ -53,4 +56,14 @@ test("product catalog protects archive, restore, and availability actions", () =
   assert.match(catalog, /Confirm restore/);
   assert.match(catalog, /Product archived successfully/);
   assert.match(catalog, /availabilityFilter/);
+});
+
+test("product editor uses an explicit bounded upload state instead of a fake default image", () => {
+  const editor = readFileSync(fileURLToPath(new URL("../src/features/products/presentation/components/product-editor.tsx", import.meta.url)), "utf8");
+  assert.match(editor, /MAX_SOURCE_IMAGE_BYTES\s*=\s*2\s*\*\s*1024\s*\*\s*1024/);
+  assert.match(editor, /MAX_PREVIEW_IMAGE_BYTES\s*=\s*250\s*\*\s*1024/);
+  assert.match(editor, /Click to upload a product image/);
+  assert.match(editor, /Change image/);
+  assert.match(editor, /Remove/);
+  assert.doesNotMatch(editor, /draft\.image \|\| "\/images\/manager-hero\.png"/);
 });
