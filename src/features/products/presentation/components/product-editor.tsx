@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import type { ProductRecord } from "@/features/products/application/ports/product-repository";
+import type { ProductCategory, ProductRecord } from "@/features/products/application/ports/product-repository";
 import { productRepository } from "@/shared/infrastructure/product-services";
 import { generateSafeUUID } from "@/shared/utils/uuid";
 import { useManagerI18n } from "@/shared/i18n/use-manager-i18n";
@@ -12,11 +12,11 @@ import { useManagerI18n } from "@/shared/i18n/use-manager-i18n";
 type CustomizationChoice = { name: string; arabicName?: string; price: number };
 type Customization = { id: string; name: string; arabicName?: string; choices: CustomizationChoice[]; required: boolean };
 type ProductDraft = {
-  name: string; arabicName: string; category: string; price: string; cost: string;
+  name: string; arabicName: string; category: string; categoryArabicName: string; price: string; cost: string;
   description: string; image: string; available: boolean; availableForTakeaway: boolean; visible: boolean; customizations: Customization[];
 };
 
-const EMPTY_DRAFT: ProductDraft = { name: "", arabicName: "", category: "", price: "", cost: "", description: "", image: "", available: true, availableForTakeaway: true, visible: true, customizations: [] };
+const EMPTY_DRAFT: ProductDraft = { name: "", arabicName: "", category: "", categoryArabicName: "", price: "", cost: "", description: "", image: "", available: true, availableForTakeaway: true, visible: true, customizations: [] };
 const MAX_SOURCE_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_PREVIEW_IMAGE_BYTES = 250 * 1024;
 const MAX_IMAGE_SIDE = 1200;
@@ -57,10 +57,10 @@ async function prepareProductImage(file: File): Promise<string> {
 
 export function ProductEditor({ editId }: { editId: string | null }) {
   const router = useRouter();
-  const { pick } = useManagerI18n();
+  const { locale, pick } = useManagerI18n();
   const isEditMode = editId !== null;
   const [draft, setDraft] = useState<ProductDraft>(EMPTY_DRAFT);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [attempted, setAttempted] = useState(false);
   const [notice, setNotice] = useState("");
   const [loadingProduct, setLoadingProduct] = useState(isEditMode);
@@ -68,6 +68,8 @@ export function ProductEditor({ editId }: { editId: string | null }) {
   const [imageProcessing, setImageProcessing] = useState(false);
   const [categoryModal, setCategoryModal] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
+  const [categoryArabicDraft, setCategoryArabicDraft] = useState("");
+  const [categoryConfirm, setCategoryConfirm] = useState(false);
   const [customizationModal, setCustomizationModal] = useState(false);
   const [editingCustomizationId, setEditingCustomizationId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState("");
@@ -103,13 +105,13 @@ export function ProductEditor({ editId }: { editId: string | null }) {
         return;
       }
       setDraft({
-        name: product.name, arabicName: product.arabicName, category: product.category,
+        name: product.name, arabicName: product.arabicName, category: product.category, categoryArabicName: product.categoryArabicName || product.category,
         price: String(product.price), cost: product.cost == null ? "" : String(product.cost),
         description: product.description ?? "", image: product.image, available: product.available, availableForTakeaway: product.availableForTakeaway ?? true,
         visible: product.visible ?? true,
         customizations: product.customizations?.map((item) => ({ ...item, choices: item.choices.map((choice) => ({ ...choice })) })) ?? [],
       });
-      setCategories((current) => current.includes(product.category) ? current : [...current, product.category]);
+      setCategories((current) => current.some((category) => category.name === product.category) ? current : [...current, { name: product.category, arabicName: product.categoryArabicName || product.category }]);
       setLoadingProduct(false);
     }).catch(() => {
       if (active) {
@@ -129,7 +131,7 @@ export function ProductEditor({ editId }: { editId: string | null }) {
     setAttempted(true);
     if (!isValid) { setNotice("أكمل الحقول المطلوبة أولًا"); window.setTimeout(() => setNotice(""), 1200); return; }
     const product: ProductRecord = {
-      id: editId ?? generateSafeUUID(), name: draft.name.trim(), arabicName: draft.arabicName.trim(), category: draft.category,
+      id: editId ?? generateSafeUUID(), name: draft.name.trim(), arabicName: draft.arabicName.trim(), category: draft.category, categoryArabicName: draft.categoryArabicName,
       price: Number(draft.price), cost: draft.cost.trim() ? Number(draft.cost) : undefined, description: draft.description.trim(),
       image: draft.image, available: draft.available, availableForTakeaway: draft.availableForTakeaway, visible: draft.visible,
       customizations: draft.customizations.map((item) => ({ ...item, choices: item.choices.map((choice) => ({ ...choice })) })),
@@ -161,11 +163,15 @@ export function ProductEditor({ editId }: { editId: string | null }) {
   };
 
   const saveCategory = () => {
-    const value = categoryDraft.trim();
-    if (!value) return;
-    setCategories((current) => current.includes(value) ? current : [...current, value]);
-    update("category", value);
+    const value = categoryDraft.trim(); const arabicValue = categoryArabicDraft.trim();
+    if (!value || !arabicValue) return;
+    if (categories.some((category) => category.name.toLocaleLowerCase() === value.toLocaleLowerCase() || category.arabicName === arabicValue)) { setNotice(pick("This category already exists.", "هذه الفئة موجودة بالفعل.")); return; }
+    if (!categoryConfirm) { setCategoryConfirm(true); return; }
+    setCategories((current) => [...current, { name: value, arabicName: arabicValue }]);
+    update("category", value); update("categoryArabicName", arabicValue);
     setCategoryDraft("");
+    setCategoryArabicDraft("");
+    setCategoryConfirm(false);
     setCategoryModal(false);
   };
 
@@ -201,7 +207,7 @@ export function ProductEditor({ editId }: { editId: string | null }) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={pick("Arabic Name", "الاسم بالعربية")} required attempted={attempted} invalid={errors.arabicName} value={draft.arabicName} onChange={(value) => update("arabicName", value)} dir="rtl" />
                 <Field label={pick("Product Name (English)", "اسم المنتج بالإنجليزية")} optional value={draft.name} onChange={(value) => update("name", value)} dir="ltr" />
-                <label className="text-xs text-white/70">{pick("Category", "الفئة")} *<select value={draft.category} onChange={(event) => { if (event.target.value === "__add__") setCategoryModal(true); else update("category", event.target.value); }} className={`mt-2 w-full rounded-lg border bg-[#0d0f0e] px-3 py-2.5 text-sm text-white outline-none ${attempted && errors.category ? "border-red-400/70" : "border-white/15"}`}>{categories.map((category) => <option key={category} value={category}>{category}</option>)}<option value="__add__">＋ {pick("Add category", "إضافة فئة")}</option></select>{attempted && errors.category && <small className="mt-1 block text-red-300">{pick("This field is required", "هذا الحقل مطلوب")}</small>}</label>
+                <label className="text-xs text-white/70">{pick("Category", "الفئة")} *<select value={draft.category} onChange={(event) => { if (event.target.value === "__add__") { setCategoryConfirm(false); setCategoryModal(true); return; } const selected = categories.find((category) => category.name === event.target.value); update("category", selected?.name || ""); update("categoryArabicName", selected?.arabicName || ""); }} className={`mt-2 w-full rounded-lg border bg-[#0d0f0e] px-3 py-2.5 text-sm text-white outline-none ${attempted && errors.category ? "border-red-400/70" : "border-white/15"}`}><option value="" disabled>{pick("Choose a category", "اختر الفئة")}</option>{categories.map((category) => <option key={category.name} value={category.name}>{locale === "ar" ? category.arabicName : category.name}</option>)}<option value="__add__">＋ {pick("Add category", "إضافة فئة")}</option></select>{attempted && errors.category && <small className="mt-1 block text-red-300">{pick("Choose a category before saving", "اختر الفئة قبل الحفظ")}</small>}</label>
                 <Field label={pick("Base Price", "السعر الأساسي")} required attempted={attempted} invalid={errors.price} value={draft.price} onChange={(value) => update("price", value)} suffix="EGP" type="number" />
                 <Field label={pick("Cost Price", "سعر التكلفة")} optional value={draft.cost} onChange={(value) => update("cost", value)} suffix="EGP" type="number" />
                 <label className="text-xs text-white/70 sm:col-span-2">{pick("Description", "الوصف")} <span className="text-white/35">— {pick("optional", "اختياري")}</span><textarea value={draft.description} onChange={(event) => update("description", event.target.value)} maxLength={250} className="mt-2 min-h-20 w-full resize-none rounded-lg border border-white/15 bg-[#0d0f0e] px-3 py-2.5 text-sm text-white outline-none" /><span className="float-right text-[10px] text-white/40">{draft.description.length}/250</span></label>
@@ -216,7 +222,7 @@ export function ProductEditor({ editId }: { editId: string | null }) {
       </div>
 
 
-      {categoryModal && <Modal onClose={() => setCategoryModal(false)} title={pick("Add Category", "إضافة فئة")} subtitle={pick("Create a category for your menu", "أنشئ فئة جديدة لقائمة الكافيه")}><input autoFocus value={categoryDraft} onChange={(event) => setCategoryDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") saveCategory(); }} placeholder={pick("e.g. Fresh Juices", "مثال: عصائر طازجة")} className="mt-5 w-full rounded-lg border border-white/15 bg-[#0d0f0e] px-3 py-2.5 text-sm text-white outline-none" /><ModalActions onCancel={() => setCategoryModal(false)} onSave={saveCategory} disabled={!categoryDraft.trim()} saveLabel={pick("Add Category", "إضافة الفئة")} /></Modal>}
+      {categoryModal && <Modal onClose={() => { setCategoryModal(false); setCategoryConfirm(false); }} title={pick("Add Category", "إضافة فئة")} subtitle={pick("Use a clear English and Arabic name; duplicate categories are rejected.", "استخدم اسمًا واضحًا بالعربية والإنجليزية؛ تُرفض الفئات المكررة.")}><div className="mt-5 grid gap-3"><Field label={pick("Category name (English)", "اسم الفئة بالإنجليزية")} value={categoryDraft} onChange={(value) => { setCategoryDraft(value); setCategoryConfirm(false); }} dir="ltr" required /><Field label={pick("Category name (Arabic)", "اسم الفئة بالعربية")} value={categoryArabicDraft} onChange={(value) => { setCategoryArabicDraft(value); setCategoryConfirm(false); }} dir="rtl" required /></div>{categoryConfirm && <p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">{pick(`Create “${categoryDraft.trim()} / ${categoryArabicDraft.trim()}” and select it for this product?`, `إنشاء «${categoryArabicDraft.trim()} / ${categoryDraft.trim()}» واختيارها لهذا المنتج؟`)}</p>}<ModalActions onCancel={() => { setCategoryModal(false); setCategoryConfirm(false); }} onSave={saveCategory} disabled={!categoryDraft.trim() || !categoryArabicDraft.trim()} saveLabel={categoryConfirm ? pick("Confirm creation", "تأكيد الإنشاء") : pick("Review category", "مراجعة الفئة")} /></Modal>}
       {customizationModal && <Modal onClose={() => setCustomizationModal(false)} title={editingCustomizationId ? pick("Edit Customization", "تعديل التخصيص") : pick("Add Customization", "إضافة تخصيص")} subtitle={pick("Enter English and Arabic labels separately; no automatic translation", "أدخل الاسم بالعربية والإنجليزية بشكل مستقل؛ بدون ترجمة تلقائية")}><Field label={pick("Group name (English)", "اسم المجموعة (إنجليزي)")} value={groupName} onChange={setGroupName} dir="ltr" optional /><Field label={pick("Group name (Arabic)", "اسم المجموعة (عربي)")} value={groupArabicName} onChange={setGroupArabicName} dir="rtl" optional /><Toggle label={pick("Required setting", "اختيار مطلوب")} value={groupRequired} onChange={setGroupRequired} /><div className="mt-4 space-y-2">{groupChoices.map((choice) => <div key={choice.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-[#0d0f0e] px-3 py-2 text-sm"><span>{choice.name}{choice.arabicName && choice.arabicName !== choice.name ? ` · ${choice.arabicName}` : ""}</span><span className="ml-auto mr-4 text-xs text-[#f5ca72]">{choice.price ? `+${choice.price} EGP` : pick("Free", "مجاني")}</span><button type="button" onClick={() => setGroupChoices((current) => current.filter((item) => item.name !== choice.name))} className="text-white/40 hover:text-red-300">×</button></div>)}</div><div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_110px_auto]"><input value={choiceDraft} onChange={(event) => setChoiceDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addChoice(); } }} placeholder={pick("Choice name (English)", "اسم الاختيار (إنجليزي)")} className="min-w-0 rounded-lg border border-white/15 bg-[#0d0f0e] px-3 py-2.5 text-sm text-white outline-none" /><input value={choiceArabicDraft} onChange={(event) => setChoiceArabicDraft(event.target.value)} placeholder={pick("Choice name (Arabic)", "اسم الاختيار (عربي)")} className="min-w-0 rounded-lg border border-white/15 bg-[#0d0f0e] bg-[#0d0f0e] px-3 py-2.5 text-sm text-white outline-none" dir="rtl" /><input type="number" min="0" value={choicePriceDraft} onChange={(event) => setChoicePriceDraft(event.target.value)} placeholder={pick("Price", "السعر")} className="min-w-0 rounded-lg border border-white/15 bg-[#0d0f0e] px-3 py-2.5 text-sm text-white outline-none" /><button type="button" onClick={addChoice} className="rounded-lg border border-[var(--gold)]/60 px-4 text-sm text-[var(--gold)]">＋ {pick("Add", "إضافة")}</button></div><p className="mt-2 text-[10px] text-white/40">{pick("Use 0 for a free choice. The selected price is added to the product base price.", "استخدم 0 للاختيار المجاني. يُضاف السعر المحدد إلى السعر الأساسي للمنتج.")}</p><ModalActions onCancel={() => setCustomizationModal(false)} onSave={saveCustomization} disabled={!(groupName.trim() || groupArabicName.trim()) || (!groupChoices.length && !choiceDraft.trim() && !choiceArabicDraft.trim())} saveLabel={pick("Save Customization", "حفظ التخصيص")} /></Modal>}
       {notice && <div role="status" className="manager-locale-toast fixed right-6 top-6 z-[90] rounded-xl border border-red-400/50 bg-[#2a1111] px-4 py-3 text-sm text-red-200">{notice}</div>}
     </div>

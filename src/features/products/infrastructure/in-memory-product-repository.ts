@@ -18,7 +18,7 @@ class InMemoryProductRepository implements ProductRepository {
   async list() { return this.products.filter((product) => product.visible !== false).map((product) => ({ ...product })); }
   async listArchived() { return this.products.filter((product) => product.visible === false).map((product) => ({ ...product })); }
   async countArchived() { return this.products.filter((product) => product.visible === false).length; }
-  async listCategories() { return [...new Set(this.products.map((product) => product.category).filter(Boolean))]; }
+  async listCategories() { return [...new Set(this.products.map((product) => product.category).filter(Boolean))].map((name) => ({ name, arabicName: this.products.find((product) => product.category === name)?.categoryArabicName || name })); }
   async getById(id: string) {
     const key = normalizeKey(id);
     const product = this.products.find((item) => item.visible !== false && normalizeKey(item.id) === key);
