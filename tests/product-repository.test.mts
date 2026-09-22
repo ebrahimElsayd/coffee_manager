@@ -45,3 +45,12 @@ test("production product removal archives the item instead of deleting sales his
   assert.doesNotMatch(repositorySource, /from\("menu_products"\)\.delete\(\)/);
   assert.match(repositorySource, /rpc\("manager_restore_product"/);
 });
+
+test("product catalog protects archive, restore, and availability actions", () => {
+  const catalog = readFileSync(fileURLToPath(new URL("../src/features/products/presentation/components/product-catalog.tsx", import.meta.url)), "utf8");
+  assert.match(catalog, /availabilityPendingId/);
+  assert.match(catalog, /restoreTarget/);
+  assert.match(catalog, /Confirm restore/);
+  assert.match(catalog, /Product archived successfully/);
+  assert.match(catalog, /availabilityFilter/);
+});
