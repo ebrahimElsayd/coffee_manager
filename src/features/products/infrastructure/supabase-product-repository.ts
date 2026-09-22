@@ -8,10 +8,10 @@ type GroupRow = { id: string; name: string; name_ar: string; is_required: boolea
 type LinkRow = { product_id: string; group_id: string; sort_order: number; modifier_groups: GroupRow | null };
 type ProductRow = { id: string; slug: string; name: string; name_ar: string; category_id: string | null; base_price: number; cost_price: number | null; image_url: string | null; availability: string; available_for_takeaway: boolean; description: string | null; menu_categories: { name: string; name_ar: string } | null };
 
-const PRODUCT_IMAGE_MAX_SOURCE_BYTES = 5 * 1024 * 1024;
-const PRODUCT_IMAGE_MAX_OUTPUT_BYTES = 500 * 1024;
-const PRODUCT_IMAGE_MAX_SIDE = 1600;
-const PRODUCT_IMAGE_MIN_SIDE = 640;
+const PRODUCT_IMAGE_MAX_SOURCE_BYTES = 2 * 1024 * 1024;
+const PRODUCT_IMAGE_MAX_OUTPUT_BYTES = 250 * 1024;
+const PRODUCT_IMAGE_MAX_SIDE = 1200;
+const PRODUCT_IMAGE_MIN_SIDE = 480;
 
 function slugify(value: string) { return value.trim().toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/g, "-").replace(/^-|-$/g, "") || `item-${generateSafeUUID()}`; }
 
@@ -26,10 +26,19 @@ async function persistProductImage(db: ReturnType<typeof getSupabaseBrowserClien
   return db!.storage.from("product-images").getPublicUrl(path).data.publicUrl;
 }
 
+function productImageStoragePath(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const marker = "/storage/v1/object/public/product-images/";
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex < 0) return null;
+  try { return decodeURIComponent(url.slice(markerIndex + marker.length).split("?")[0]); }
+  catch { return null; }
+}
+
 async function optimizeProductImage(dataUrl: string): Promise<Blob> {
   const original = await (await fetch(dataUrl)).blob();
   if (!original.type.startsWith("image/")) throw new Error("The selected file is not a valid image.");
-  if (original.size > PRODUCT_IMAGE_MAX_SOURCE_BYTES) throw new Error("Image is too large. Choose an image smaller than 5 MB.");
+  if (original.size > PRODUCT_IMAGE_MAX_SOURCE_BYTES) throw new Error("Image is too large. Choose an image no larger than 2 MB.");
   if (typeof createImageBitmap !== "function") {
     if (original.size <= PRODUCT_IMAGE_MAX_OUTPUT_BYTES) return original;
     throw new Error("This browser cannot safely compress the selected image.");
@@ -56,7 +65,7 @@ async function optimizeProductImage(dataUrl: string): Promise<Blob> {
       if (currentLongSide <= PRODUCT_IMAGE_MIN_SIDE) break;
       scale *= Math.max(PRODUCT_IMAGE_MIN_SIDE / currentLongSide, 0.82);
     }
-    throw new Error("Image could not be reduced below 500 KB. Choose a simpler or smaller image.");
+    throw new Error("Image could not be reduced below 250 KB. Choose a simpler or smaller image.");
   } finally {
     bitmap.close();
   }
@@ -138,14 +147,23 @@ export class SupabaseProductRepository implements ProductRepository {
   async save(product: ProductRecord) {
     const db = getSupabaseBrowserClient(); if (!db) throw new Error("Supabase is not configured");
     const cafeId = await getManagerCafeId();
+    const existing = await db.from("menu_products").select("image_url").eq("cafe_id", cafeId).eq("id", product.id).maybeSingle();
+    if (existing.error) throw existing.error;
+    const previousImageUrl = existing.data?.image_url ?? null;
     const imageUrl = await persistProductImage(db, product.image, product.id, cafeId);
+    const uploadedImagePath = product.image.startsWith("data:image/") ? productImageStoragePath(imageUrl) : null;
     const categoryName = product.category.trim();
     const category = categoryName ? await db.from("menu_categories").select("id").eq("cafe_id", cafeId).eq("name", categoryName).maybeSingle() : { data: null, error: null };
     if (category.error) throw category.error;
     let categoryId = category.data?.id ?? null;
     if (categoryName && !categoryId) { const created = await db.from("menu_categories").insert({ cafe_id: cafeId, code: slugify(categoryName), name: categoryName, name_ar: categoryName, sort_order: 999 }).select("id").single(); if (created.error) throw created.error; categoryId = created.data.id; }
     const { error } = await db.from("menu_products").upsert({ id: product.id, cafe_id: cafeId, category_id: categoryId, slug: slugify(product.name || product.arabicName), name: product.name || product.arabicName, name_ar: product.arabicName || product.name, base_price: product.price, cost_price: product.cost ?? null, image_url: imageUrl, availability: product.visible === false ? "hidden" : product.available ? "available" : "unavailable", available_for_takeaway: product.availableForTakeaway !== false, description: product.description || null, allows_notes: true, updated_at: new Date().toISOString() }, { onConflict: "id" });
-    if (error) throw error;
+    if (error) {
+      if (uploadedImagePath) await db.storage.from("product-images").remove([uploadedImagePath]);
+      throw error;
+    }
+    const previousImagePath = previousImageUrl !== imageUrl ? productImageStoragePath(previousImageUrl) : null;
+    if (previousImagePath) await db.storage.from("product-images").remove([previousImagePath]);
     const oldLinks = await db.from("product_modifier_groups").delete().eq("product_id", product.id); if (oldLinks.error) throw oldLinks.error;
     for (const [groupIndex, group] of (product.customizations ?? []).entries()) {
       const groupName = group.name.trim() || group.arabicName?.trim() || "Option";
