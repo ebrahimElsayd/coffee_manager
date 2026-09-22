@@ -41,11 +41,14 @@ export function ProductCatalog() {
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [archivedCount, setArchivedCount] = useState(0);
+  const [archivedOpen, setArchivedOpen] = useState(false);
 
   useEffect(() => {
-    const load = () => void productRepository.list().then((nextRecords) => {
+    const load = () => void Promise.all([productRepository.list(), productRepository.countArchived()]).then(([nextRecords, nextArchivedCount]) => {
       productCatalogCache = nextRecords;
       setRecords(nextRecords);
+      setArchivedCount(nextArchivedCount);
       setLoadError("");
     }).catch(() => {
       setLoadError("تعذر تحميل المنتجات. تحقق من الاتصال والحساب ثم أعد المحاولة.");
@@ -87,6 +90,7 @@ export function ProductCatalog() {
           <div><h1 className="font-serif text-4xl text-[#f4efe5]">{pick("Products & Menu", "المنتجات والقائمة")}</h1></div>
           <div className="flex flex-1 items-center justify-end gap-4">
             <label className="flex min-w-52 max-w-lg flex-1 items-center gap-3 rounded-xl border border-white/20 bg-[#111312] px-4 py-3 text-sm text-white/45">⌕<input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent outline-none" placeholder={pick("Search products...", "ابحث عن منتج...")} /></label>
+            <button type="button" onClick={() => setArchivedOpen(true)} className="min-w-40 rounded-xl border border-white/20 bg-white/[.03] px-5 py-3 text-sm text-white/75 transition hover:border-[var(--gold)] hover:text-[#f5ca72]">♲ {pick("Archived", "المؤرشفة")} <span className="ms-1 rounded-full bg-white/10 px-2 py-0.5 text-xs">{archivedCount}</span></button>
             <button type="button" onClick={() => router.push("/products?new=1")} className="min-w-44 rounded-xl bg-[#eab454] px-6 py-3 text-sm font-semibold text-[#1a1308] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(234,180,84,.22)]">＋ {pick("Add Product", "إضافة منتج")}</button>
           </div>
         </header>
@@ -106,6 +110,7 @@ export function ProductCatalog() {
       </div>
       {selectedProduct && <ProductPreviewModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
       {deleteTarget && <DeleteProductDialog product={deleteTarget} pending={deletePending} error={deleteError} onCancel={() => { if (!deletePending) setDeleteTarget(null); }} onConfirm={() => void confirmDelete()} />}
+      {archivedOpen && <ArchivedProductsDialog onClose={() => setArchivedOpen(false)} onRestored={() => { void productRepository.countArchived().then(setArchivedCount); }} />}
     </main>
   );
 }
@@ -142,4 +147,43 @@ function ProductPreviewModal({ product, onClose }: { product: ProductRecord; onC
 function DeleteProductDialog({ product, pending, error, onCancel, onConfirm }: { product: ProductRecord; pending: boolean; error: string; onCancel: () => void; onConfirm: () => void }) {
   const { pick } = useManagerI18n();
   return <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-4" role="alertdialog" aria-modal="true" aria-busy={pending}><div className="w-full max-w-sm rounded-2xl border border-red-300/40 bg-[#171513] p-6 text-center shadow-2xl"><div className="mx-auto grid size-14 place-items-center rounded-full bg-red-400/10 text-2xl text-red-300">×</div><h2 className="mt-4 font-serif text-2xl">{pick("Remove Product?", "حذف المنتج؟")}</h2><p className="mt-2 text-sm leading-6 text-white/55">{pick("This removes", "سيتم حذف")} <b className="text-white">{product.arabicName || product.name}</b> {pick("from the customer menu while keeping its previous sales and receipts.", "من قائمة العميل مع الاحتفاظ بالمبيعات والفواتير السابقة.")}</p>{error && <p role="alert" className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs text-red-200">{error}</p>}<div className="mt-6 flex gap-3"><button type="button" onClick={onCancel} disabled={pending} className="flex-1 rounded-lg border border-white/20 py-2.5 text-sm text-white/70 disabled:cursor-not-allowed disabled:opacity-50">{pick("No, keep it", "لا، احتفظ به")}</button><button type="button" onClick={onConfirm} disabled={pending} className="flex-1 rounded-lg bg-red-500/80 py-2.5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60">{pending ? pick("Removing...", "جارٍ الحذف...") : pick("Yes, remove", "نعم، احذف")}</button></div></div></div>;
+}
+
+function ArchivedProductsDialog({ onClose, onRestored }: { onClose: () => void; onRestored: () => void }) {
+  const { pick } = useManagerI18n();
+  const [products, setProducts] = useState<readonly ProductRecord[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    setError("");
+    void productRepository.listArchived().then(setProducts).catch(() => setError(pick("Archived products could not be loaded.", "تعذر تحميل المنتجات المؤرشفة."))).finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
+
+  const filtered = useMemo(() => {
+    const search = query.trim().toLocaleLowerCase();
+    return products.filter((product) => !search || `${product.name} ${product.arabicName}`.toLocaleLowerCase().includes(search));
+  }, [products, query]);
+
+  const restore = async (product: ProductRecord) => {
+    if (restoringId) return;
+    setRestoringId(product.id);
+    setError("");
+    try {
+      await productRepository.restore(product.id);
+      setProducts((current) => current.filter((item) => item.id !== product.id));
+      onRestored();
+    } catch {
+      setError(pick("The product could not be restored. Please try again.", "تعذرت استعادة المنتج. حاول مرة أخرى."));
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  return <div className="fixed inset-0 z-[60] grid place-items-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-label={pick("Archived Products", "المنتجات المؤرشفة")}><section className="flex max-h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[var(--gold)]/45 bg-[#111312] shadow-2xl"><header className="flex items-center justify-between border-b border-white/10 p-5"><div><h2 className="font-serif text-2xl">♲ {pick("Archived Products", "المنتجات المؤرشفة")}</h2><p className="mt-1 text-xs text-white/45">{pick("Restored products return as temporarily unavailable.", "المنتج المستعاد يعود غير متاح مؤقتًا.")}</p></div><button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full border border-white/20 text-xl text-white/65">×</button></header><div className="p-5"><label className="flex items-center gap-3 rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-sm text-white/45">⌕<input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent text-white outline-none" placeholder={pick("Search archived products...", "ابحث في المنتجات المؤرشفة...")} /></label>{error && <div role="alert" className="mt-4 flex items-center justify-between rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200"><span>{error}</span><button type="button" onClick={load} className="rounded-lg border border-red-300/40 px-3 py-1.5 text-xs">{pick("Retry", "إعادة المحاولة")}</button></div>}</div><div className="overflow-y-auto px-5 pb-5">{loading ? <p className="py-10 text-center text-sm text-white/45">{pick("Loading archived products...", "جارٍ تحميل المنتجات المؤرشفة...")}</p> : filtered.length ? <div className="grid gap-3 sm:grid-cols-2">{filtered.map((product) => <article key={product.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[.025] p-3"><div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-white/5"><ResilientImage src={product.image} fallbackSrc={`/images/products/${product.id}.webp`} alt={product.name || product.arabicName} fill sizes="64px" className="object-cover" /></div><div className="min-w-0 flex-1"><h3 className="truncate font-semibold">{product.arabicName || product.name}</h3>{product.name && <p className="truncate text-xs text-white/45">{product.name}</p>}<p className="mt-1 text-xs text-[#eab454]">EGP {product.price.toFixed(2)}</p></div><button type="button" disabled={restoringId !== null} onClick={() => void restore(product)} className="rounded-lg border border-[#5ca66b]/60 px-3 py-2 text-xs text-[#9ce5ad] disabled:cursor-wait disabled:opacity-50">{restoringId === product.id ? pick("Restoring...", "جارٍ الاستعادة...") : pick("Restore", "استعادة")}</button></article>)}</div> : <p className="py-10 text-center text-sm text-white/45">{pick("No archived products found.", "لا توجد منتجات مؤرشفة.")}</p>}</div></section></div>;
 }

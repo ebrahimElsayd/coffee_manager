@@ -21,11 +21,14 @@ export type ProductRecord = {
 
 export interface ProductRepository {
   list(): Promise<readonly ProductRecord[]>;
+  listArchived(): Promise<readonly ProductRecord[]>;
+  countArchived(): Promise<number>;
   listCategories(): Promise<readonly string[]>;
   getById(id: string): Promise<ProductRecord | null>;
   getByName(name: string): Promise<ProductRecord | null>;
   save(product: ProductRecord): Promise<void>;
   delete(id: string): Promise<void>;
+  restore(id: string): Promise<void>;
   updateAvailability(id: string, available: boolean): Promise<void>;
   subscribe(listener: () => void): () => void;
 }

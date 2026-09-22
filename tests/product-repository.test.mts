@@ -23,6 +23,11 @@ test("product repository supports the complete local product lifecycle", async (
   assert.equal((await productRepository.getById(id))?.available, false);
   await productRepository.delete(id);
   assert.equal(await productRepository.getById(id), null);
+  assert.equal((await productRepository.listArchived()).some((product) => product.id === id), true);
+  assert.equal(await productRepository.countArchived(), 1);
+  await productRepository.restore(id);
+  assert.equal((await productRepository.getById(id))?.available, false);
+  assert.equal(await productRepository.countArchived(), 0);
 });
 
 test("product uploads enforce bounded dimensions and a 500 KB encoded image", () => {
@@ -38,4 +43,5 @@ test("production product removal archives the item instead of deleting sales his
   assert.match(repositorySource, /rpc\("manager_archive_product"/);
   assert.match(repositorySource, /neq\("availability",\s*"hidden"\)/);
   assert.doesNotMatch(repositorySource, /from\("menu_products"\)\.delete\(\)/);
+  assert.match(repositorySource, /rpc\("manager_restore_product"/);
 });
