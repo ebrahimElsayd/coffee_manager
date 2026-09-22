@@ -110,7 +110,7 @@ export class SupabaseProductRepository implements ProductRepository {
     const groupsByProduct = new Map<string, LinkRow[]>();
     for (const link of (links.data ?? []) as unknown as LinkRow[]) groupsByProduct.set(link.product_id, [...(groupsByProduct.get(link.product_id) ?? []), link]);
     return ((products.data ?? []) as unknown as ProductRow[]).map((row) => ({
-      id: row.id, name: row.name, arabicName: row.name_ar ?? "", category: row.menu_categories?.name ?? "", price: Number(row.base_price || 0), cost: row.cost_price == null ? undefined : Number(row.cost_price), image: row.image_url ?? "", available: row.availability === "available", availableForTakeaway: row.available_for_takeaway !== false, visible: row.availability !== "hidden", description: row.description ?? undefined,
+      id: row.id, name: row.name, arabicName: row.name_ar ?? "", category: row.menu_categories?.name ?? "", categoryArabicName: row.menu_categories?.name_ar ?? row.menu_categories?.name ?? "", price: Number(row.base_price || 0), cost: row.cost_price == null ? undefined : Number(row.cost_price), image: row.image_url ?? "", available: row.availability === "available", availableForTakeaway: row.available_for_takeaway !== false, visible: row.availability !== "hidden", description: row.description ?? undefined,
       customizations: (groupsByProduct.get(row.id) ?? []).sort((a, b) => a.sort_order - b.sort_order).flatMap((link) => link.modifier_groups ? [{ id: link.modifier_groups.id, name: link.modifier_groups.name, arabicName: link.modifier_groups.name_ar ?? undefined, required: link.modifier_groups.is_required, choices: (link.modifier_groups.modifier_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map((choice) => ({ name: choice.name, arabicName: choice.name_ar ?? undefined, price: Number(choice.price_delta || 0) })) }] : []),
     })) satisfies ProductRecord[];
   }
@@ -121,7 +121,7 @@ export class SupabaseProductRepository implements ProductRepository {
     const products = await db.from("menu_products").select("id,slug,name,name_ar,category_id,base_price,cost_price,image_url,availability,available_for_takeaway,description,menu_categories(name,name_ar)").eq("cafe_id", cafeId).eq("availability", "hidden").order("updated_at", { ascending: false });
     if (products.error) throw products.error;
     return ((products.data ?? []) as unknown as ProductRow[]).map((row) => ({
-      id: row.id, name: row.name, arabicName: row.name_ar ?? "", category: row.menu_categories?.name ?? "", price: Number(row.base_price || 0), cost: row.cost_price == null ? undefined : Number(row.cost_price), image: row.image_url ?? "", available: false, availableForTakeaway: row.available_for_takeaway !== false, visible: false, description: row.description ?? undefined,
+      id: row.id, name: row.name, arabicName: row.name_ar ?? "", category: row.menu_categories?.name ?? "", categoryArabicName: row.menu_categories?.name_ar ?? row.menu_categories?.name ?? "", price: Number(row.base_price || 0), cost: row.cost_price == null ? undefined : Number(row.cost_price), image: row.image_url ?? "", available: false, availableForTakeaway: row.available_for_takeaway !== false, visible: false, description: row.description ?? undefined,
     })) satisfies ProductRecord[];
   }
 
@@ -136,9 +136,9 @@ export class SupabaseProductRepository implements ProductRepository {
   async listCategories() {
     const db = getSupabaseBrowserClient(); if (!db) throw new Error("Supabase is not configured");
     const cafeId = await getManagerCafeId();
-    const result = await db.from("menu_categories").select("name").eq("cafe_id", cafeId).eq("is_active", true).order("sort_order");
+    const result = await db.from("menu_categories").select("name,name_ar").eq("cafe_id", cafeId).eq("is_active", true).order("sort_order");
     if (result.error) throw result.error;
-    return [...new Set((result.data ?? []).map((category) => category.name).filter(Boolean))];
+    return (result.data ?? []).filter((category, index, all) => Boolean(category.name) && all.findIndex((item) => item.name.toLocaleLowerCase() === category.name.toLocaleLowerCase()) === index).map((category) => ({ name: category.name, arabicName: category.name_ar || category.name }));
   }
 
   async getById(id: string) { return (await this.list()).find((product) => product.id === id) ?? null; }
@@ -156,7 +156,7 @@ export class SupabaseProductRepository implements ProductRepository {
     const category = categoryName ? await db.from("menu_categories").select("id").eq("cafe_id", cafeId).eq("name", categoryName).maybeSingle() : { data: null, error: null };
     if (category.error) throw category.error;
     let categoryId = category.data?.id ?? null;
-    if (categoryName && !categoryId) { const created = await db.from("menu_categories").insert({ cafe_id: cafeId, code: slugify(categoryName), name: categoryName, name_ar: categoryName, sort_order: 999 }).select("id").single(); if (created.error) throw created.error; categoryId = created.data.id; }
+    if (categoryName && !categoryId) { const created = await db.from("menu_categories").insert({ cafe_id: cafeId, code: slugify(categoryName), name: categoryName, name_ar: product.categoryArabicName?.trim() || categoryName, sort_order: 999 }).select("id").single(); if (created.error) throw created.error; categoryId = created.data.id; }
     const { error } = await db.from("menu_products").upsert({ id: product.id, cafe_id: cafeId, category_id: categoryId, slug: slugify(product.name || product.arabicName), name: product.name || product.arabicName, name_ar: product.arabicName || product.name, base_price: product.price, cost_price: product.cost ?? null, image_url: imageUrl, availability: product.visible === false ? "hidden" : product.available ? "available" : "unavailable", available_for_takeaway: product.availableForTakeaway !== false, description: product.description || null, allows_notes: true, updated_at: new Date().toISOString() }, { onConflict: "id" });
     if (error) {
       if (uploadedImagePath) await db.storage.from("product-images").remove([uploadedImagePath]);

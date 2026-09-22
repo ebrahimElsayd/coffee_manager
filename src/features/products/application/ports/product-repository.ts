@@ -3,6 +3,7 @@ export type ProductRecord = {
   name: string;
   arabicName: string;
   category: string;
+  categoryArabicName?: string;
   price: number;
   image: string;
   available: boolean;
@@ -19,11 +20,13 @@ export type ProductRecord = {
   }[];
 };
 
+export type ProductCategory = { name: string; arabicName: string };
+
 export interface ProductRepository {
   list(): Promise<readonly ProductRecord[]>;
   listArchived(): Promise<readonly ProductRecord[]>;
   countArchived(): Promise<number>;
-  listCategories(): Promise<readonly string[]>;
+  listCategories(): Promise<readonly ProductCategory[]>;
   getById(id: string): Promise<ProductRecord | null>;
   getByName(name: string): Promise<ProductRecord | null>;
   save(product: ProductRecord): Promise<void>;
