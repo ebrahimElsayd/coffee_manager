@@ -188,18 +188,19 @@ export default function DashboardPage() {
 
   const tableOrders = useMemo(() => orders.filter((order) => order.table === selectedTable && order.sessionStatus === "Open"), [orders, selectedTable]);
   const hasClosedSession = useMemo(() => cachedOrders.some((order) => order.table === selectedTable && order.sessionStatus === "Closed"), [cachedOrders, selectedTable]);
-  const selectedOrder = tableOrders[0];
+  const activeTableOrders = useMemo(() => tableOrders.filter((order) => order.status !== "Cancelled"), [tableOrders]);
+  const selectedOrder = activeTableOrders[0] ?? tableOrders[0];
   const customerGroups = useMemo(() => {
     const grouped = new Map<string, { customer: string; order: ManagerOrder; drinks: ManagerOrder["drinks"] }>();
-    tableOrders.forEach((order) => order.drinks.forEach((drink) => {
+    activeTableOrders.forEach((order) => order.drinks.forEach((drink) => {
       const customer = drink.recipientName || order.customer;
       const current = grouped.get(customer) ?? { customer, order: { ...order, id: `${order.id}-${customer}`, customer }, drinks: [] };
       current.drinks.push(drink);
       grouped.set(customer, current);
     }));
     return Array.from(grouped.values());
-  }, [tableOrders]);
-  const totalItems = tableOrders.reduce((sum, order) => sum + order.drinks.reduce((items, drink) => items + drink.quantity, 0), 0);
+  }, [activeTableOrders]);
+  const totalItems = activeTableOrders.reduce((sum, order) => sum + order.drinks.reduce((items, drink) => items + drink.quantity, 0), 0);
   const tableStatus = tableOrders.some((order) => order.status === "Preparing") ? "Preparing" : tableOrders.some((order) => order.status === "New") ? "New" : tableOrders.length && tableOrders.every((order) => ["Delivered", "Cancelled"].includes(order.status)) ? "Delivered" : tableOrders.length && tableOrders.every((order) => ["Ready", "Cancelled"].includes(order.status)) ? "Ready" : hasClosedSession ? "Done" : tables.find((table) => table.number === selectedTable)?.status ?? "New";
   const canPay = tableOrders.length > 0 && tableOrders.every((order) => ["Delivered", "Cancelled"].includes(order.status)) && tableOrders.some((order) => order.status !== "Cancelled" && order.paymentStatus !== "Paid");
   const activeBillOrders = tableOrders.filter((order) => order.status !== "Cancelled");
