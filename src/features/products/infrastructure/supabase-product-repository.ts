@@ -91,7 +91,7 @@ export class SupabaseProductRepository implements ProductRepository {
     const db = getSupabaseBrowserClient(); if (!db) throw new Error("Supabase is not configured");
     const cafeId = await getManagerCafeId();
     void this.ensureRealtime(cafeId);
-    const products = await db.from("menu_products").select("id,slug,name,name_ar,category_id,base_price,cost_price,image_url,availability,available_for_takeaway,description,menu_categories(name,name_ar)").eq("cafe_id", cafeId).order("created_at", { ascending: false });
+    const products = await db.from("menu_products").select("id,slug,name,name_ar,category_id,base_price,cost_price,image_url,availability,available_for_takeaway,description,menu_categories(name,name_ar)").eq("cafe_id", cafeId).neq("availability", "hidden").order("created_at", { ascending: false });
     if (products.error) throw products.error;
     const productIds = (products.data ?? []).map((product) => product.id);
     const links = productIds.length
@@ -142,7 +142,12 @@ export class SupabaseProductRepository implements ProductRepository {
     this.listeners.forEach((listener) => listener());
   }
 
-  async delete(id: string) { const db = getSupabaseBrowserClient(); if (!db) throw new Error("Supabase is not configured"); const { error } = await db.from("menu_products").delete().eq("id", id); if (error) throw error; this.listeners.forEach((listener) => listener()); }
+  async delete(id: string) {
+    const db = getSupabaseBrowserClient(); if (!db) throw new Error("Supabase is not configured");
+    const result = await db.rpc("manager_archive_product", { p_product_id: id });
+    if (result.error) throw result.error;
+    this.listeners.forEach((listener) => listener());
+  }
 
   async updateAvailability(id: string, available: boolean) {
     const db = getSupabaseBrowserClient(); if (!db) throw new Error("Supabase is not configured");

@@ -39,6 +39,8 @@ export function ProductCatalog() {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
   const [selectedProduct, setSelectedProduct] = useState<ProductRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     const load = () => void productRepository.list().then((nextRecords) => {
@@ -65,9 +67,17 @@ export function ProductCatalog() {
   const availableCategories = useMemo(() => ["All", ...Array.from(new Set(records.map((product) => categoryOf(product.category))))], [records]);
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    await productRepository.delete(deleteTarget.id);
-    setDeleteTarget(null);
+    if (!deleteTarget || deletePending) return;
+    setDeletePending(true);
+    setDeleteError("");
+    try {
+      await productRepository.delete(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch {
+      setDeleteError(pick("The product could not be removed from the menu. Please try again.", "تعذر حذف المنتج من القائمة. حاول مرة أخرى."));
+    } finally {
+      setDeletePending(false);
+    }
   };
 
   return (
@@ -88,14 +98,14 @@ export function ProductCatalog() {
 
         <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_285px]">
           <section className="grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-            {filteredProducts.map((product, index) => <ProductCard key={product.id} product={product} currency={currency} priority={index === 0} onPreview={() => setSelectedProduct(product)} onEdit={() => router.push(`/products?new=1&edit=${encodeURIComponent(product.id)}`)} onDelete={() => setDeleteTarget(product)} onToggleAvailability={() => void productRepository.updateAvailability(product.id, !product.available)} />)}
+            {filteredProducts.map((product, index) => <ProductCard key={product.id} product={product} currency={currency} priority={index === 0} onPreview={() => setSelectedProduct(product)} onEdit={() => router.push(`/products?new=1&edit=${encodeURIComponent(product.id)}`)} onDelete={() => { setDeleteError(""); setDeleteTarget(product); }} onToggleAvailability={() => void productRepository.updateAvailability(product.id, !product.available)} />)}
             {!filteredProducts.length && <div className="col-span-full rounded-2xl border border-dashed border-white/15 p-12 text-center text-sm text-white/45">{pick("No products match your search.", "لا توجد منتجات مطابقة لبحثك.")}</div>}
           </section>
           <CategorySummary products={filteredProducts} />
         </div>
       </div>
       {selectedProduct && <ProductPreviewModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
-      {deleteTarget && <DeleteProductDialog product={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={() => void confirmDelete()} />}
+      {deleteTarget && <DeleteProductDialog product={deleteTarget} pending={deletePending} error={deleteError} onCancel={() => { if (!deletePending) setDeleteTarget(null); }} onConfirm={() => void confirmDelete()} />}
     </main>
   );
 }
@@ -109,7 +119,7 @@ function ProductCard({ product, currency, priority, onPreview, onEdit, onDelete,
       <div className="p-4">
         <h2 className="font-serif text-xl">{product.arabicName}</h2>{product.name && <p className="mt-0.5 text-xs text-white/55">{product.name}</p>}
         <p className="mt-2 text-xs text-white/50">☕ {labelsFor(category)[0]}　{labelsFor(category)[1]}</p><p className="mt-3 text-lg text-[#eab454]">{currency} {product.price.toFixed(2)}</p>
-        <button type="button" onClick={(event) => { event.stopPropagation(); onToggleAvailability(); }} className={`mt-3 flex w-full items-center justify-between border-t border-white/10 pt-3 text-xs transition ${product.available ? "text-[#9ce5ad]" : "text-white/45"}`}><span>● {product.available ? pick("Available", "متوفر") : pick("Out of stock", "غير متوفر")}</span><span className={`h-5 w-9 rounded-full p-0.5 ${product.available ? "bg-[#5ca66b]" : "bg-white/20"}`}><span className={`block size-4 rounded-full bg-white transition ${product.available ? "translate-x-4" : ""}`} /></span></button>
+        <button type="button" onClick={(event) => { event.stopPropagation(); onToggleAvailability(); }} className={`mt-3 flex w-full items-center justify-between border-t border-white/10 pt-3 text-xs transition ${product.available ? "text-[#9ce5ad]" : "text-white/45"}`}><span>● {product.available ? pick("Available", "متاح") : pick("Temporarily unavailable", "غير متاح مؤقتًا")}</span><span className={`h-5 w-9 rounded-full p-0.5 ${product.available ? "bg-[#5ca66b]" : "bg-white/20"}`}><span className={`block size-4 rounded-full bg-white transition ${product.available ? "translate-x-4" : ""}`} /></span></button>
         <button type="button" onClick={(event) => { event.stopPropagation(); onEdit(); }} className="mt-4 w-full rounded-lg border border-[var(--gold)]/45 bg-[var(--gold)]/[.06] py-2.5 text-sm text-[#f5ca72] transition hover:border-[var(--gold)] hover:bg-[var(--gold)]/[.12]">✎ {pick("Edit Product", "تعديل المنتج")}</button>
       </div>
     </article>
@@ -126,10 +136,10 @@ function CategorySummary({ products }: { products: readonly ProductRecord[] }) {
 function ProductPreviewModal({ product, onClose }: { product: ProductRecord; onClose: () => void }) {
   const { pick } = useManagerI18n();
   const category = categoryOf(product.category);
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-label={`${product.name || product.arabicName} preview`} onClick={onClose}><article className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--gold)]/60 bg-[#151615] shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="relative aspect-[1.15]"><ResilientImage src={product.image} fallbackSrc={`/images/products/${product.id}.webp`} alt={product.name || product.arabicName} fill className="object-cover" /><button type="button" onClick={onClose} className="absolute right-4 top-4 grid size-9 place-items-center rounded-full border border-white/25 bg-black/60 text-xl text-white">×</button></div><div className="p-6"><p className="text-xs uppercase tracking-[.2em] text-[var(--gold)]">{labelsFor(category)[0]}　{labelsFor(category)[1]}</p><h2 className="mt-2 font-serif text-3xl">{product.arabicName}</h2>{product.name && <p className="mt-1 text-sm text-white/50">{product.name}</p>}{product.description && <p className="mt-3 text-sm leading-6 text-white/65">{product.description}</p>}<p className="mt-4 text-2xl text-[#eab454]">EGP {product.price.toFixed(2)}</p><div className="my-5 space-y-5 border-t border-white/10 pt-4">{product.customizations?.length ? product.customizations.map((customization) => <div key={customization.id}><div className="mb-3 flex items-center justify-between"><p className="text-sm text-white/75">{customization.name}</p><small className="text-white/40">{customization.required ? pick("Required", "مطلوب") : pick("Optional", "اختياري")}</small></div><div className="flex flex-wrap gap-2">{customization.choices.map((choice, index) => <span key={choice.name} className={index === 0 ? "rounded-full border border-[var(--gold)] bg-[var(--gold)]/15 px-3 py-1.5 text-xs text-[#f5ca72]" : "rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/65"}>{choice.name}{choice.price > 0 && ` +${choice.price} EGP`}</span>)}</div></div>) : <p className="text-sm text-white/45">{pick("No customizations for this product.", "لا توجد تخصيصات لهذا المنتج.")}</p>}</div><div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[.03] p-3"><span className={product.available ? "text-[#9ce5ad]" : "text-white/45"}>● {product.available ? pick("Available", "متوفر") : pick("Out of stock", "غير متوفر")}</span><button type="button" onClick={onClose} className="rounded-lg bg-[#eab454] px-4 py-2 text-sm font-semibold text-[#1a1308]">{pick("Close", "إغلاق")}</button></div></div></article></div>;
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-label={`${product.name || product.arabicName} preview`} onClick={onClose}><article className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--gold)]/60 bg-[#151615] shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="relative aspect-[1.15]"><ResilientImage src={product.image} fallbackSrc={`/images/products/${product.id}.webp`} alt={product.name || product.arabicName} fill className="object-cover" /><button type="button" onClick={onClose} className="absolute right-4 top-4 grid size-9 place-items-center rounded-full border border-white/25 bg-black/60 text-xl text-white">×</button></div><div className="p-6"><p className="text-xs uppercase tracking-[.2em] text-[var(--gold)]">{labelsFor(category)[0]}　{labelsFor(category)[1]}</p><h2 className="mt-2 font-serif text-3xl">{product.arabicName}</h2>{product.name && <p className="mt-1 text-sm text-white/50">{product.name}</p>}{product.description && <p className="mt-3 text-sm leading-6 text-white/65">{product.description}</p>}<p className="mt-4 text-2xl text-[#eab454]">EGP {product.price.toFixed(2)}</p><div className="my-5 space-y-5 border-t border-white/10 pt-4">{product.customizations?.length ? product.customizations.map((customization) => <div key={customization.id}><div className="mb-3 flex items-center justify-between"><p className="text-sm text-white/75">{customization.name}</p><small className="text-white/40">{customization.required ? pick("Required", "مطلوب") : pick("Optional", "اختياري")}</small></div><div className="flex flex-wrap gap-2">{customization.choices.map((choice, index) => <span key={choice.name} className={index === 0 ? "rounded-full border border-[var(--gold)] bg-[var(--gold)]/15 px-3 py-1.5 text-xs text-[#f5ca72]" : "rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/65"}>{choice.name}{choice.price > 0 && ` +${choice.price} EGP`}</span>)}</div></div>) : <p className="text-sm text-white/45">{pick("No customizations for this product.", "لا توجد تخصيصات لهذا المنتج.")}</p>}</div><div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[.03] p-3"><span className={product.available ? "text-[#9ce5ad]" : "text-white/45"}>● {product.available ? pick("Available", "متاح") : pick("Temporarily unavailable", "غير متاح مؤقتًا")}</span><button type="button" onClick={onClose} className="rounded-lg bg-[#eab454] px-4 py-2 text-sm font-semibold text-[#1a1308]">{pick("Close", "إغلاق")}</button></div></div></article></div>;
 }
 
-function DeleteProductDialog({ product, onCancel, onConfirm }: { product: ProductRecord; onCancel: () => void; onConfirm: () => void }) {
+function DeleteProductDialog({ product, pending, error, onCancel, onConfirm }: { product: ProductRecord; pending: boolean; error: string; onCancel: () => void; onConfirm: () => void }) {
   const { pick } = useManagerI18n();
-  return <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-4" role="alertdialog" aria-modal="true"><div className="w-full max-w-sm rounded-2xl border border-red-300/40 bg-[#171513] p-6 text-center shadow-2xl"><div className="mx-auto grid size-14 place-items-center rounded-full bg-red-400/10 text-2xl text-red-300">×</div><h2 className="mt-4 font-serif text-2xl">{pick("Delete Product?", "حذف المنتج؟")}</h2><p className="mt-2 text-sm text-white/55">{pick("Are you sure you want to delete", "هل تريد بالتأكيد حذف")} <b className="text-white">{product.arabicName || product.name}</b>؟</p><div className="mt-6 flex gap-3"><button type="button" onClick={onCancel} className="flex-1 rounded-lg border border-white/20 py-2.5 text-sm text-white/70">{pick("No, keep it", "لا، احتفظ به")}</button><button type="button" onClick={onConfirm} className="flex-1 rounded-lg bg-red-500/80 py-2.5 text-sm font-semibold text-white">{pick("Yes, delete", "نعم، احذف")}</button></div></div></div>;
+  return <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-4" role="alertdialog" aria-modal="true" aria-busy={pending}><div className="w-full max-w-sm rounded-2xl border border-red-300/40 bg-[#171513] p-6 text-center shadow-2xl"><div className="mx-auto grid size-14 place-items-center rounded-full bg-red-400/10 text-2xl text-red-300">×</div><h2 className="mt-4 font-serif text-2xl">{pick("Remove Product?", "حذف المنتج؟")}</h2><p className="mt-2 text-sm leading-6 text-white/55">{pick("This removes", "سيتم حذف")} <b className="text-white">{product.arabicName || product.name}</b> {pick("from the customer menu while keeping its previous sales and receipts.", "من قائمة العميل مع الاحتفاظ بالمبيعات والفواتير السابقة.")}</p>{error && <p role="alert" className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs text-red-200">{error}</p>}<div className="mt-6 flex gap-3"><button type="button" onClick={onCancel} disabled={pending} className="flex-1 rounded-lg border border-white/20 py-2.5 text-sm text-white/70 disabled:cursor-not-allowed disabled:opacity-50">{pick("No, keep it", "لا، احتفظ به")}</button><button type="button" onClick={onConfirm} disabled={pending} className="flex-1 rounded-lg bg-red-500/80 py-2.5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60">{pending ? pick("Removing...", "جارٍ الحذف...") : pick("Yes, remove", "نعم، احذف")}</button></div></div></div>;
 }
